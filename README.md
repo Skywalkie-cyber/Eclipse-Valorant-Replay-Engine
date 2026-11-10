@@ -155,7 +155,3 @@ The compiled installer will be output to:
 `src-tauri/target/release/bundle/nsis/Eclipse_0.1.0_x64-setup.exe`
 
 ---
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE) — see the LICENSE file for details.
