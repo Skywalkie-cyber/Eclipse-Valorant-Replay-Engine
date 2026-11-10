@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build Outputs
+dist/
+dist-ssr/
+build/
+
+# Rust Target & Compilation Cache
+src-tauri/target/
+target/
+*.tmp
+*.temp
+
+# CRITICAL SECURITY: Developer Private Signing Key
+# (Only you should possess this key to sign updates; NEVER push to GitHub)
+*.key
+src-tauri/eclipse-updater.key
+
+# Compiled Binary Installers (Upload these to GitHub Releases, not git repo)
+*.exe
+*.msi
+
+# System & OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor caches
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Local Recording Spool Dirs
+clips/
+recordings/
+
+# Agent & Workspace configs
+.agents/
+.gemini/
+*.timestamp-*.mjs

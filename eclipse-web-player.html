@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eclipse Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #07080B;
+      color: #FFFFFF;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+    .container {
+      width: 100%;
+      max-width: 1060px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #FFFFFF;
+    }
+    .brand-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(124, 58, 237, 0.25);
+      color: #C084FC;
+      border: 1px solid rgba(147, 51, 234, 0.4);
+    }
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000000;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid #2A2D34;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.9), 0 0 30px rgba(124,58,237,0.25);
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000000;
+      outline: none;
+    }
+    .meta-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+    }
+    .clip-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #E2E8F0;
+    }
+    .badge-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00D48F;
+      box-shadow: 0 0 8px #00D48F;
+    }
+    .error-card {
+      display: none;
+      background: #0F1117;
+      border: 1px solid #2A2D34;
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      max-width: 440px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="playerContainer">
+    <div class="header">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="9" stroke="#C084FC"></circle>
+          <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-30 12 12)" stroke="#A855F7"></ellipse>
+          <circle cx="12" cy="12" r="2.5" fill="#A855F7"></circle>
+        </svg>
+        <span class="brand-title">ECLIPSE</span>
+        <span class="brand-pill">PLAYER</span>
+      </div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #94A3B8;">
+        Shared Highlight
+      </div>
+    </div>
+
+    <div class="video-wrapper">
+      <video id="videoPlayer" controls autoplay playsinline preload="auto"></video>
+    </div>
+
+    <div class="meta-bar">
+      <div class="clip-title">
+        <span class="badge-live"></span>
+        <span id="clipTitle">Gameplay Highlight</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-card" id="errorCard">
+    <h1 style="color: #F87171; font-size: 20px; font-weight: 800; margin-bottom: 8px;">No Video Found</h1>
+    <p style="color: #94A3B8; font-size: 13px;">This highlight link does not contain a valid video source.</p>
+  </div>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      let videoSrc = params.get('v') || params.get('cdn') || params.get('url');
+      const clipName = params.get('clip');
+
+      if (!videoSrc && window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash);
+        videoSrc = hashParams.get('v') || hashParams.get('cdn');
+      }
+
+      if (clipName) {
+        document.getElementById('clipTitle').textContent = decodeURIComponent(clipName).replace(/[_-]/g, ' ');
+      }
+
+      if (videoSrc) {
+        try {
+          // Supports base64 encoded or direct URL
+          if (videoSrc.startsWith('aHR0c') || (!videoSrc.startsWith('http') && videoSrc.length > 20)) {
+            videoSrc = atob(videoSrc);
+          }
+        } catch(e) {}
+
+        const player = document.getElementById('videoPlayer');
+        player.src = videoSrc;
+      } else {
+        document.getElementById('playerContainer').style.display = 'none';
+        document.getElementById('errorCard').style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>
+

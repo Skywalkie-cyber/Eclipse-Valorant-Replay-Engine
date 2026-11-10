@@ -85,7 +85,7 @@ Eclipse is built strictly following **Riot Games' Third-Party Tool & Developer P
 
 ## 📥 Installation & Download
 
-1. Download the latest installer from [GitHub Releases](https://github.com/stackryze/Eclipse/releases/latest):
+1. Download the latest installer from [GitHub Releases](https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/latest):
    - **Installer**: `Eclipse-Setup.exe`
 2. Run the installer and launch **Eclipse**.
 3. Launch **Valorant** — Eclipse will automatically detect the game process and begin rolling background capture.
@@ -132,8 +132,8 @@ Eclipse/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/stackryze/Eclipse.git
-cd Eclipse
+git clone https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine.git
+cd Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine
 ```
 
 ### 2. Install Frontend Dependencies

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Valorant Clipper & Match Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function () {
+        const stop = function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        };
+        window.addEventListener('contextmenu', stop, true);
+        document.addEventListener('contextmenu', stop, true);
+        window.addEventListener(
+          'keydown',
+          function (e) {
+            const k = (e.key || '').toUpperCase();
+            const c = e.keyCode || e.which;
+            const ctrl = e.ctrlKey || e.metaKey;
+            const shift = e.shiftKey;
+            if (
+              k === 'F12' ||
+              c === 123 ||
+              k === 'F5' ||
+              c === 116 ||
+              (ctrl && shift && (k === 'I' || k === 'J' || k === 'C' || k === 'K' || k === 'E' || k === 'M')) ||
+              (ctrl && (k === 'U' || k === 'R' || k === 'P' || k === 'S'))
+            ) {
+              return stop(e);
+            }
+          },
+          true
+        );
+      })();
+    </script>
+  </head>
+  <body oncontextmenu="return false;" class="text-[#FFFFFF] antialiased select-none overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
+
