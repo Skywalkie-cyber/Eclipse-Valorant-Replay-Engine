@@ -1,15 +1,15 @@
 {
-  "version": "0.1.1",
-  "notes": "Eclipse v0.1.1: Custom key combinations for all hotkeys and fixed rolling buffer duration slider alignment.",
-  "pub_date": "2026-11-11T12:00:00Z",
+  "version": "0.1.2",
+  "notes": "Eclipse v0.1.2: Diagnostic test update verifying seamless 1-click in-app background auto-updater pipeline.",
+  "pub_date": "2026-11-11T13:20:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWmpzdmszcnVwYWtjRSs2dW44OXU4UTFPM04zMDFRNzlqYWg1RWFYVkZWS1JTWnQ3WU9waW9CbWcrcEVlUWYrR1FPOEUwdmVzZ2daNVMzZCt5ZjgrQndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0Mzk4MjIwCWZpbGU6RWNsaXBzZV8wLjEuMV94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjEKcThXZ2xqTzdETW1iSFdhNE4xNE1kYm5Cakp3UGZDb3BBVWhFdS9qbU9GZzRKdmJEdWI0S3drRFZZaUpSVEtWTWVtNTBhL3RUbzJRQWFDZkNucWwzQVE9PQo=",
-      "url": "https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases/download/v0.1.1/Eclipse-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnQzMDl3TUhrT0FCTkgxcU9NMGxZOG1MTW1WUFptcWtMUGhjR3FaNDFZTzdtYTNXT2lBYkx2Qy92bzlieUpkMzJXVXVWb09yOW1GWnZhNDhQd1JDL1FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NDAzMjU3CWZpbGU6RWNsaXBzZV8wLjEuMl94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjIKUktQdEF6dUY0a29GQTAvVHlqYmdFWkRCZ2c5SEIvREQ1b0JuK3ZpZGJXMDVIYTZ4eTVueDRldURobE5Na0JJcHdURjNHQkUra1JyeVJocE9vVmZzQUE9PQo=",
+      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.2/Eclipse-Setup.exe"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWmpzdmszcnVwYWtjRSs2dW44OXU4UTFPM04zMDFRNzlqYWg1RWFYVkZWS1JTWnQ3WU9waW9CbWcrcEVlUWYrR1FPOEUwdmVzZ2daNVMzZCt5ZjgrQndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0Mzk4MjIwCWZpbGU6RWNsaXBzZV8wLjEuMV94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjEKcThXZ2xqTzdETW1iSFdhNE4xNE1kYm5Cakp3UGZDb3BBVWhFdS9qbU9GZzRKdmJEdWI0S3drRFZZaUpSVEtWTWVtNTBhL3RUbzJRQWFDZkNucWwzQVE9PQo=",
-      "url": "https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases/download/v0.1.1/Eclipse-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnQzMDl3TUhrT0FCTkgxcU9NMGxZOG1MTW1WUFptcWtMUGhjR3FaNDFZTzdtYTNXT2lBYkx2Qy92bzlieUpkMzJXVXVWb09yOW1GWnZhNDhQd1JDL1FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NDAzMjU3CWZpbGU6RWNsaXBzZV8wLjEuMl94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjIKUktQdEF6dUY0a29GQTAvVHlqYmdFWkRCZ2c5SEIvREQ1b0JuK3ZpZGJXMDVIYTZ4eTVueDRldURobE5Na0JJcHdURjNHQkUra1JyeVJocE9vVmZzQUE9PQo=",
+      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.2/Eclipse-Setup.exe"
     }
   }
 }
