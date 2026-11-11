@@ -312,7 +312,7 @@ export function SettingsPanel() {
       updated.hotkey_play_pause = 'Space';
     }
     setConfig(updated);
-    invoke('update_config', { newConfig: updated }).catch(() => {});
+    invoke('update_config', { newConfig: updated }).catch(() => { });
     localStorage.setItem('eclipse_hotkey_mark_in', updated.hotkey_mark_in || '[');
     localStorage.setItem('eclipse_hotkey_mark_out', updated.hotkey_mark_out || ']');
     localStorage.setItem('eclipse_hotkey_play_pause', updated.hotkey_play_pause || 'Space');
@@ -365,11 +365,10 @@ export function SettingsPanel() {
                     isProgrammaticScroll = false;
                   }, 600);
                 }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-150 text-left btn-tactile ${
-                  activeTab() === tab.id
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-150 text-left btn-tactile ${activeTab() === tab.id
                     ? 'bg-[#7C3AED] text-[#FFFFFF] border border-[#9333EA]/50 shadow-[0_2px_8px_rgba(0,0,0,0.5)] font-bold'
                     : 'text-[#CBD5E1] hover:text-[#FFFFFF] hover:bg-[#12141A]'
-                }`}
+                  }`}
               >
                 <svg class="size-4 shrink-0 text-[#FFFFFF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d={tab.icon} />
@@ -408,10 +407,10 @@ export function SettingsPanel() {
           <div className="space-y-8">
             {/* SECTION 1: Video & Capture */}
             <div id="settings-video" className="space-y-6">
-            <div>
-              <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Video &amp; Encoder Settings</h1>
-              <p className="text-xs text-slate-400 mt-1">Configure zero-copy DXGI Desktop Duplication, hardware encoder silicon, and frame pacing.</p>
-            </div>
+              <div>
+                <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Video &amp; Encoder Settings</h1>
+                <p className="text-xs text-slate-400 mt-1">Configure zero-copy DXGI Desktop Duplication, hardware encoder silicon, and frame pacing.</p>
+              </div>
 
               {/* Recording Mode */}
               <div className="bg-[#0A0A0A]/70 border border-[#262626] rounded-xl p-5 shadow-sm space-y-3">
@@ -420,11 +419,10 @@ export function SettingsPanel() {
                   <button
                     type="button"
                     onClick={() => setConfig({ ...config()!, mode: 'instantreplay' })}
-                    className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${
-                      config()!.mode === 'instantreplay'
+                    className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${config()!.mode === 'instantreplay'
                         ? 'bg-[#0A0A0A] border-[#FFFFFF] text-white shadow-[0_0_12px_rgba(255,255,255,0.15)]'
                         : 'bg-[#000000] border-[#141414] text-slate-400 hover:text-white hover:bg-[#0A0A0A]'
-                    }`}
+                      }`}
                   >
                     <div className="font-bold text-xs">Instant Replay (Rolling Ring Buffer)</div>
                     <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">Continuous hardware spooler. Saves the past 15s to 120s instantly upon elimination or hotkey.</div>
@@ -432,11 +430,10 @@ export function SettingsPanel() {
                   <button
                     type="button"
                     onClick={() => setConfig({ ...config()!, mode: 'fullmatchvod' })}
-                    className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${
-                      config()!.mode === 'fullmatchvod'
+                    className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${config()!.mode === 'fullmatchvod'
                         ? 'bg-[#0A0A0A] border-[#FFFFFF] text-white shadow-[0_0_12px_rgba(255,255,255,0.15)]'
                         : 'bg-[#000000] border-[#141414] text-slate-400 hover:text-white hover:bg-[#0A0A0A]'
-                    }`}
+                      }`}
                   >
                     <div className="font-bold text-xs">Full Match VOD</div>
                     <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">Records entire match from round 1 to victory with synchronized timeline event markers.</div>
@@ -609,14 +606,14 @@ export function SettingsPanel() {
               </div>
             </div>
 
-          <div className="border-t border-[#2A2D34] my-8" />
+            <div className="border-t border-[#2A2D34] my-8" />
 
-          {/* SECTION 2: Audio & Voice */}
-          <div id="settings-audio" className="space-y-6">
-            <div>
-              <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Audio &amp; Voice Capture</h1>
-              <p className="text-xs text-slate-400 mt-1">Configure WASAPI loopback audio, microphone gain, track separation, and push-to-talk.</p>
-            </div>
+            {/* SECTION 2: Audio & Voice */}
+            <div id="settings-audio" className="space-y-6">
+              <div>
+                <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Audio &amp; Voice Capture</h1>
+                <p className="text-xs text-slate-400 mt-1">Configure WASAPI loopback audio, microphone gain, track separation, and push-to-talk.</p>
+              </div>
 
               {/* Game Audio */}
               <div className="bg-[#0A0A0A]/70 border border-[#262626] rounded-xl p-5 space-y-4 shadow-sm">
@@ -762,18 +759,18 @@ export function SettingsPanel() {
               </div>
             </div>
 
-          <div className="border-t border-[#2A2D34] my-8" />
+            <div className="border-t border-[#2A2D34] my-8" />
 
-          {/* SECTION 3: Smart Auto-Clipping Triggers */}
-          <div id="settings-triggers" className="space-y-6">
-            <div>
-              <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Smart Auto-Clipping Triggers</h1>
-              <p className="text-xs text-slate-400 mt-1">Select which in-game combat moments automatically trigger highlight preservation without touching a key.</p>
-            </div>
+            {/* SECTION 3: Smart Auto-Clipping Triggers */}
+            <div id="settings-triggers" className="space-y-6">
+              <div>
+                <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Smart Auto-Clipping Triggers</h1>
+                <p className="text-xs text-slate-400 mt-1">Select which in-game combat moments automatically trigger highlight preservation without touching a key.</p>
+              </div>
 
               <div className="bg-[#0A0A0A]/70 border border-[#262626] rounded-xl p-5 space-y-3 shadow-sm">
                 <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Combat Elimination Events</h3>
-                
+
                 <label className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626] cursor-pointer hover:border-[#333333]">
                   <div>
                     <div className="text-xs font-bold text-white">All Eliminations (Kills)</div>
@@ -859,17 +856,17 @@ export function SettingsPanel() {
               </div>
             </div>
 
-          <div className="border-t border-[#2A2D34] my-8" />
+            <div className="border-t border-[#2A2D34] my-8" />
 
-          {/* SECTION 4: Hotkeys */}
-          <div id="settings-hotkeys" className="space-y-6">
-            <div>
-              <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Global Hotkeys</h1>
-              <p className="text-xs text-slate-400 mt-1">Non-intrusive Windows pass-through hooks that work seamlessly while in Valorant.</p>
-            </div>
+            {/* SECTION 4: Hotkeys */}
+            <div id="settings-hotkeys" className="space-y-6">
+              <div>
+                <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Global Hotkeys</h1>
+                <p className="text-xs text-slate-400 mt-1">Non-intrusive Windows pass-through hooks that work seamlessly while in Valorant.</p>
+              </div>
 
               <div className="bg-[#0A0A0A]/70 border border-[#262626] rounded-xl p-5 space-y-4 shadow-sm">
-                
+
                 {/* 1. Manual Clip Hotkey */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626] gap-4">
                   <div>
@@ -880,11 +877,10 @@ export function SettingsPanel() {
                     <button
                       type="button"
                       onClick={() => setRecordingHotkey(recordingHotkey() === 'manual_clip' ? null : 'manual_clip')}
-                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
-                        recordingHotkey() === 'manual_clip'
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${recordingHotkey() === 'manual_clip'
                           ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
                           : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
-                      }`}
+                        }`}
                       title="Click to rebind to any key or combination"
                     >
                       <Show when={recordingHotkey() === 'manual_clip'} fallback={<span>{config()!.hotkey_label || 'F8'}</span>}>
@@ -912,11 +908,10 @@ export function SettingsPanel() {
                     <button
                       type="button"
                       onClick={() => setRecordingHotkey(recordingHotkey() === 'mark_in' ? null : 'mark_in')}
-                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
-                        recordingHotkey() === 'mark_in'
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${recordingHotkey() === 'mark_in'
                           ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
                           : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
-                      }`}
+                        }`}
                       title="Click to rebind to any key or combination"
                     >
                       <Show when={recordingHotkey() === 'mark_in'} fallback={<span>{config()!.hotkey_mark_in || '['}</span>}>
@@ -944,11 +939,10 @@ export function SettingsPanel() {
                     <button
                       type="button"
                       onClick={() => setRecordingHotkey(recordingHotkey() === 'mark_out' ? null : 'mark_out')}
-                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
-                        recordingHotkey() === 'mark_out'
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${recordingHotkey() === 'mark_out'
                           ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
                           : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
-                      }`}
+                        }`}
                       title="Click to rebind to any key or combination"
                     >
                       <Show when={recordingHotkey() === 'mark_out'} fallback={<span>{config()!.hotkey_mark_out || ']'}</span>}>
@@ -976,11 +970,10 @@ export function SettingsPanel() {
                     <button
                       type="button"
                       onClick={() => setRecordingHotkey(recordingHotkey() === 'play_pause' ? null : 'play_pause')}
-                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
-                        recordingHotkey() === 'play_pause'
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${recordingHotkey() === 'play_pause'
                           ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
                           : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
-                      }`}
+                        }`}
                       title="Click to rebind to any key or combination"
                     >
                       <Show when={recordingHotkey() === 'play_pause'} fallback={<span>{config()!.hotkey_play_pause || 'Space'}</span>}>
@@ -1074,19 +1067,19 @@ export function SettingsPanel() {
               </div>
             </div>
 
-          <div className="border-t border-[#2A2D34] my-8" />
+            <div className="border-t border-[#2A2D34] my-8" />
 
-          {/* SECTION 5: Storage & Performance */}
-          <div id="settings-storage" className="space-y-6">
-            <div>
-              <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Storage &amp; Disk Quota</h1>
-              <p className="text-xs text-slate-400 mt-1">Manage local disk storage allocations and automated clip retention policies.</p>
-            </div>
+            {/* SECTION 5: Storage & Performance */}
+            <div id="settings-storage" className="space-y-6">
+              <div>
+                <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Storage &amp; Disk Quota</h1>
+                <p className="text-xs text-slate-400 mt-1">Manage local disk storage allocations and automated clip retention policies.</p>
+              </div>
 
               {/* Storage Quotas */}
               <div className="bg-[#0A0B0E]/85 border border-[#2A2D34] rounded-xl p-5 space-y-4 shadow-sm">
                 <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Disk Quota & Auto-Purge</h3>
-                
+
                 <div className="pt-1">
                   <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-slate-400 font-medium">Maximum Storage Allocation</span>
@@ -1203,11 +1196,10 @@ export function SettingsPanel() {
                     type="button"
                     onClick={checkUpdatesManually}
                     disabled={updateCheckStatus() === 'checking'}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all btn-tactile ${
-                      updateCheckStatus() === 'checking'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all btn-tactile ${updateCheckStatus() === 'checking'
                         ? 'bg-[#1E293B] text-slate-400 border border-[#334155]'
                         : 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:brightness-110 text-white border border-[#C084FC]/40 shadow-sm'
-                    }`}
+                      }`}
                   >
                     <Show
                       when={updateCheckStatus() !== 'checking'}

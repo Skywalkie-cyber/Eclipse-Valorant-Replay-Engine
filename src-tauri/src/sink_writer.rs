@@ -68,9 +68,9 @@ impl MfVideoRecorder {
             )
             .map_err(|e| format!("MFCreateSinkWriterFromURL failed: {e}"))?;
 
-            // Cap encoder FPS to 60 so H.264 Level 4.1 hardware MFTs never reject or speed-warp streams
+            // Support up to 100 Mbps bitrate for crisp 4K Ultra HD and 1440p
             let safe_fps = fps.clamp(30, 60);
-            let safe_bitrate = bitrate_bps.clamp(5_000_000, 16_000_000);
+            let safe_bitrate = bitrate_bps.clamp(5_000_000, 100_000_000);
             let media_type_out =
                 MFCreateMediaType().map_err(|e| format!("MFCreateMediaType failed: {e}"))?;
 
@@ -105,6 +105,19 @@ impl MfVideoRecorder {
                     MFVideoInterlace_Progressive.0 as u32,
                 )
                 .map_err(|e| format!("Set interlace failed: {e}"))?;
+
+            // CRITICAL FIX FOR 4K (3840x2160) & 1440p:
+            // Windows Media Foundation default H.264 profile is Level 4.1 (which rejects >2048x1024 with 0xC00D36B4).
+            // Setting High Profile (100) and Level 5.2 (52) instructs NVENC / AMF / Intel QSV / MFT to accept 4K UHD @ 60 FPS!
+            let mf_mt_mpeg2_profile = windows::core::GUID::from_u128(0xad76a21e_3070_4ad4_80ce_6671b561d8b0);
+            let mf_mt_mpeg2_level = windows::core::GUID::from_u128(0x96f66574_11c5_4015_8666_bff516436da7);
+            let _ = media_type_out.SetUINT32(&mf_mt_mpeg2_profile, 100); // eAVEncH264VProfile_High
+            let level = if width > 1920 || height > 1088 {
+                52 // eAVEncH264VLevel5_2 (supports up to 4096x2304 @ 60fps)
+            } else {
+                42 // eAVEncH264VLevel4_2 (Full HD 1080p @ 60fps)
+            };
+            let _ = media_type_out.SetUINT32(&mf_mt_mpeg2_level, level);
 
             let video_stream_index = sink_writer
                 .AddStream(&media_type_out)

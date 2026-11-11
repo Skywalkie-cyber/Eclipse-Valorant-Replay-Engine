@@ -6,7 +6,9 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+use crate::config::ConfigManager;
 use crate::disk_spooler::MatchEvent;
+use crate::game_events::GameSignal;
 use crate::sink_writer::MfVideoRecorder;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -43,6 +45,11 @@ pub struct ReplayRecorderManager {
     last_hud_kill_instant: Instant,
     last_hud_death_instant: Instant,
     live_spree_count: u32,
+
+    // Smart Auto-Clipping event dispatcher and dynamic config
+    signal_tx: Option<tokio::sync::mpsc::UnboundedSender<GameSignal>>,
+    config_manager: Option<ConfigManager>,
+    scaled_frame_buf: Vec<u8>,
 }
 
 impl ReplayRecorderManager {
@@ -99,7 +106,18 @@ impl ReplayRecorderManager {
             last_hud_kill_instant: now - Duration::from_secs(10),
             last_hud_death_instant: now - Duration::from_secs(10),
             live_spree_count: 0,
+            signal_tx: None,
+            config_manager: None,
+            scaled_frame_buf: Vec::new(),
         }
+    }
+
+    pub fn set_signal_tx(&mut self, tx: tokio::sync::mpsc::UnboundedSender<GameSignal>) {
+        self.signal_tx = Some(tx);
+    }
+
+    pub fn set_config_manager(&mut self, cfg: ConfigManager) {
+        self.config_manager = Some(cfg);
     }
 
     fn current_total_media_ms(&self) -> u64 {
@@ -111,16 +129,53 @@ impl ReplayRecorderManager {
         self.completed_media_ms + active_ms
     }
 
+    /// Fast fixed-point bilinear/box scaling for BGRA frames to support 4K UHD, 1440p, 1080p, and 720p
+    fn scale_bgra_box(src: &[u8], src_w: usize, src_h: usize, dst: &mut [u8], dst_w: usize, dst_h: usize) {
+        if src_w == 0 || src_h == 0 || dst_w == 0 || dst_h == 0 {
+            return;
+        }
+        let x_ratio = ((src_w << 16) / dst_w) + 1;
+        let y_ratio = ((src_h << 16) / dst_h) + 1;
+
+        for y in 0..dst_h {
+            let src_y = ((y * y_ratio) >> 16).min(src_h - 1);
+            let src_row = src_y * src_w * 4;
+            let dst_row = y * dst_w * 4;
+            for x in 0..dst_w {
+                let src_x = ((x * x_ratio) >> 16).min(src_w - 1);
+                let src_px = src_row + src_x * 4;
+                let dst_px = dst_row + x * 4;
+                if src_px + 3 < src.len() && dst_px + 3 < dst.len() {
+                    dst[dst_px..dst_px + 4].copy_from_slice(&src[src_px..src_px + 4]);
+                }
+            }
+        }
+    }
+
     pub fn on_video_frame(&mut self, bgra_data: &[u8], width: u32, height: u32) {
         if width == 0 || height == 0 || bgra_data.is_empty() {
             return;
         }
 
-        self.last_frame_dims = Some((width, height));
+        // 1. Sample live HUD combat state directly on source frame
+        self.hud_frame_counter += 1;
+        if self.hud_frame_counter % 5 == 0 {
+            self.inspect_hud_combat_state(bgra_data, width, height);
+        }
+
+        // 2. Resolve configured target resolution (4K UHD, 1440p, 1080p, 720p or Native)
+        let (target_w, target_h) = if let Some(ref cm) = self.config_manager {
+            let res = cm.current.read().unwrap().resolution;
+            res.dimensions(width, height)
+        } else {
+            (width, height)
+        };
+
+        self.last_frame_dims = Some((target_w, target_h));
         self.last_video_frame_instant = Instant::now();
 
         if self.current_recorder.is_none() {
-            self.start_new_segment(width, height);
+            self.start_new_segment(target_w, target_h);
         }
 
         // Rotate rolling segments every 15.0 seconds of actual recorded media time
@@ -130,19 +185,35 @@ impl ReplayRecorderManager {
             .map(|r| r.current_media_time_ms())
             .unwrap_or(0);
         if active_media_ms >= 15_000 {
-            self.rotate_segment(width, height);
+            self.rotate_segment(target_w, target_h);
         }
 
-        if let Some(ref mut rec) = self.current_recorder {
-            if rec.write_frame_bgra(bgra_data).is_ok() {
-                self.frames_written += 1;
+        let write_ok = if target_w != width || target_h != height {
+            let needed_bytes = (target_w * target_h * 4) as usize;
+            if self.scaled_frame_buf.len() != needed_bytes {
+                self.scaled_frame_buf.resize(needed_bytes, 0);
             }
-        }
+            Self::scale_bgra_box(
+                bgra_data,
+                width as usize,
+                height as usize,
+                &mut self.scaled_frame_buf,
+                target_w as usize,
+                target_h as usize,
+            );
+            if let Some(ref mut rec) = self.current_recorder {
+                rec.write_frame_bgra(&self.scaled_frame_buf).is_ok()
+            } else {
+                false
+            }
+        } else if let Some(ref mut rec) = self.current_recorder {
+            rec.write_frame_bgra(bgra_data).is_ok()
+        } else {
+            false
+        };
 
-        // Sample HUD regions every 5 frames to detect exact live Kill & Death moments
-        self.hud_frame_counter += 1;
-        if self.hud_frame_counter % 5 == 0 {
-            self.inspect_hud_combat_state(bgra_data, width, height);
+        if write_ok {
+            self.frames_written += 1;
         }
     }
 
@@ -240,13 +311,36 @@ impl ReplayRecorderManager {
         }
         let avg_ring_luma = if ring_samples > 0 { ring_luma_sum / (ring_samples as f32) } else { 128.0 };
 
-        // Detect sharp upward spike in Kill Banner core surrounded by dark medallion background
+        // Also sample teal progress bar below medallion (x=0.369..0.631, y=0.957..0.967)
+        let mut teal_samples = 0u32;
+        let mut teal_hits = 0u32;
+        let tx0 = (width as f32 * 0.369) as usize;
+        let tx1 = (width as f32 * 0.631) as usize;
+        let ty0 = (height as f32 * 0.957) as usize;
+        let ty1 = ((height as f32 * 0.967) as usize).max(ty0 + 2);
+        for y in (ty0..ty1).step_by(2) {
+            for x in (tx0..tx1).step_by(3) {
+                let idx = y * stride + x * 4;
+                if idx + 2 < bgra.len() {
+                    let b = bgra[idx] as i32;
+                    let g = bgra[idx + 1] as i32;
+                    let r = bgra[idx + 2] as i32;
+                    teal_samples += 1;
+                    if g > 140 && (g - r) > 35 && b > 90 && b < g + 25 {
+                        teal_hits += 1;
+                    }
+                }
+            }
+        }
+        let is_teal_kill_bar = teal_samples > 0 && (teal_hits * 100 / teal_samples) >= 25;
+
+        // Detect sharp upward spike in Kill Banner core surrounded by dark medallion background OR vibrant teal kill progress bar
         let spike_ratio = norm_kill_score / self.hud_baseline_banner.max(6.0);
+        let is_kill_confirmed = (norm_kill_score > 19.5 && spike_ratio > 2.45 && avg_ring_luma < 92.0) || is_teal_kill_bar;
+
         if is_alive_hud
-            && self.hud_alive_streak >= 6
-            && norm_kill_score > 19.5
-            && spike_ratio > 2.45
-            && avg_ring_luma < 92.0
+            && self.hud_alive_streak >= 5
+            && is_kill_confirmed
             && self.last_hud_kill_instant.elapsed() > Duration::from_millis(1600)
         {
             if self.last_hud_kill_instant.elapsed() > Duration::from_secs(12) {
@@ -256,8 +350,9 @@ impl ReplayRecorderManager {
             }
             self.last_hud_kill_instant = Instant::now();
             let k_num = self.live_spree_count;
+            let is_headshot = norm_kill_score > 26.0;
             let label = match k_num {
-                1 => "Kill (1K)",
+                1 => if is_headshot { "Headshot Kill (1K)" } else { "Kill (1K)" },
                 2 => "Double Kill (2K)",
                 3 => "Triple Kill (3K)",
                 4 => "Quadra Kill (4K)",
@@ -270,7 +365,7 @@ impl ReplayRecorderManager {
                 round: 1,
                 event_type: "kill".into(),
                 weapon: Some("Vandal".into()),
-                headshot: norm_kill_score > 26.0,
+                headshot: is_headshot,
                 victim: Some("Enemy".into()),
                 killer: Some("Self".into()),
                 site: None,
@@ -278,6 +373,31 @@ impl ReplayRecorderManager {
                 multi_kill_label: Some(label.into()),
                 reason: Some(label.into()),
             });
+
+            // Evaluate against User's Smart Auto-Clipping Trigger Configuration
+            let is_multi = k_num > 1;
+            let should_clip = if let Some(ref cm) = self.config_manager {
+                let cfg = cm.current.read().unwrap();
+                let mut allow = false;
+                if cfg.auto_clip_kills {
+                    allow = true;
+                }
+                if is_headshot && cfg.auto_clip_headshots {
+                    allow = true;
+                }
+                if is_multi && cfg.auto_clip_multikills {
+                    allow = true;
+                }
+                allow
+            } else {
+                true
+            };
+
+            if should_clip {
+                if let Some(ref tx) = self.signal_tx {
+                    let _ = tx.send(GameSignal::TriggerClip { reason: label.to_string() });
+                }
+            }
         } else {
             self.hud_baseline_banner = self.hud_baseline_banner * 0.90 + norm_kill_score * 0.10;
         }
@@ -322,6 +442,18 @@ impl ReplayRecorderManager {
                     multi_kill_label: None,
                     reason: Some("Eliminated".into()),
                 });
+
+                let should_clip_death = if let Some(ref cm) = self.config_manager {
+                    cm.current.read().unwrap().auto_clip_deaths
+                } else {
+                    true
+                };
+
+                if should_clip_death {
+                    if let Some(ref tx) = self.signal_tx {
+                        let _ = tx.send(GameSignal::TriggerClip { reason: "Death Replay".to_string() });
+                    }
+                }
             }
         }
         if !is_alive_hud {
@@ -334,12 +466,22 @@ impl ReplayRecorderManager {
         self.segment_counter += 1;
         let file_path = self.spool_dir.join(format!("seg_{}.mp4", self.segment_counter));
 
+        let (fps, bitrate, buf_secs) = if let Some(ref cm) = self.config_manager {
+            let cfg = cm.current.read().unwrap();
+            (cfg.target_fps, (cfg.target_bitrate_kbps.max(5000)) * 1000, cfg.buffer_length_seconds)
+        } else {
+            (self.target_fps, self.target_bitrate_bps, self.buffer_seconds)
+        };
+        self.target_fps = fps;
+        self.target_bitrate_bps = bitrate;
+        self.buffer_seconds = buf_secs;
+
         match MfVideoRecorder::new(
             &file_path,
             width,
             height,
-            self.target_fps,
-            self.target_bitrate_bps,
+            fps,
+            bitrate,
             self.audio_sample_rate,
         ) {
             Ok(rec) => {
@@ -366,8 +508,9 @@ impl ReplayRecorderManager {
             }
         }
 
-        // Keep up to 2 completed segments of 15s each = 30s of rolling history
-        while self.completed_segments.len() > 2 {
+        // Keep enough completed segments of 15s each to honor full configured buffer duration
+        let max_segs = ((self.buffer_seconds as usize + 14) / 15).max(2) + 1;
+        while self.completed_segments.len() > max_segs {
             if let Some(old_seg) = self.completed_segments.pop_front() {
                 let _ = fs::remove_file(old_seg);
             }
@@ -516,7 +659,14 @@ impl ReplayRecorderManager {
                     self.completed_segments.push_back(active_path);
                 }
             }
-            while self.completed_segments.len() > 2 {
+            let buffer_secs = if let Some(ref cm) = self.config_manager {
+                cm.current.read().unwrap().buffer_length_seconds
+            } else {
+                self.buffer_seconds
+            };
+            self.buffer_seconds = buffer_secs;
+            let max_segs = ((self.buffer_seconds as usize + 14) / 15).max(2) + 1;
+            while self.completed_segments.len() > max_segs {
                 if let Some(old_seg) = self.completed_segments.pop_front() {
                     let _ = fs::remove_file(old_seg);
                 }

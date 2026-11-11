@@ -81,30 +81,7 @@ fn trigger_manual_clip(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
     let path = recorder.trigger_save_clip(None)?;
     let duration = state.config_manager.current.read().unwrap().buffer_length_seconds;
 
-    if let Some(overlay_win) = app.get_webview_window("overlay") {
-        let _ = overlay_win.set_ignore_cursor_events(true);
-        if let Ok(hwnd) = overlay_win.hwnd() {
-            unsafe {
-                use windows_sys::Win32::UI::WindowsAndMessaging::{
-                    ShowWindow, SetWindowPos, HWND_TOPMOST, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
-                };
-                ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
-                SetWindowPos(
-                    hwnd.0 as _,
-                    HWND_TOPMOST,
-                    24,
-                    72,
-                    460,
-                    160,
-                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
-                );
-            }
-        }
-        let _ = overlay_win.eval(&format!(
-            "if (window.triggerOverlay) window.triggerOverlay({}, 'Manual Clip');",
-            duration
-        ));
-    }
+    let _ = show_overlay_window(app.clone(), Some(duration as u64), Some("Manual Clip".into()));
 
     use tauri::Emitter;
     let _ = app.emit("clip-triggered", serde_json::json!({
@@ -114,33 +91,6 @@ fn trigger_manual_clip(app: tauri::AppHandle, state: State<'_, AppState>) -> Res
     }));
     play_soft_notification_sound();
     Ok(path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-fn show_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("overlay") {
-        let _ = window.set_ignore_cursor_events(true);
-        if let Ok(hwnd) = window.hwnd() {
-            unsafe {
-                use windows_sys::Win32::UI::WindowsAndMessaging::{
-                    ShowWindow, SetWindowPos, HWND_TOPMOST, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
-                };
-                ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
-                SetWindowPos(
-                    hwnd.0 as _,
-                    HWND_TOPMOST,
-                    24,
-                    72,
-                    460,
-                    160,
-                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
-                );
-            }
-        }
-        Ok(())
-    } else {
-        Err("Overlay window not found".into())
-    }
 }
 
 #[tauri::command]
@@ -213,6 +163,45 @@ async fn get_clip_thumbnails(file_path: String, duration_secs: f64) -> Result<Ve
     })
     .await
     .map_err(|e| format!("Thumbnail extraction task error: {e}"))?
+}
+
+#[tauri::command]
+fn show_overlay_window(
+    app: tauri::AppHandle,
+    seconds: Option<u64>,
+    reason: Option<String>,
+) -> Result<(), String> {
+    if let Some(overlay_win) = app.get_webview_window("overlay") {
+        let _ = overlay_win.set_ignore_cursor_events(true);
+        let _ = overlay_win.show();
+        if let Ok(hwnd) = overlay_win.hwnd() {
+            unsafe {
+                use windows_sys::Win32::UI::WindowsAndMessaging::{
+                    ShowWindow, SetWindowPos, HWND_TOPMOST, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
+                };
+                ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
+                SetWindowPos(
+                    hwnd.0 as _,
+                    HWND_TOPMOST,
+                    24,
+                    72,
+                    460,
+                    160,
+                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
+                );
+            }
+        }
+        let secs = seconds.unwrap_or(30);
+        let r = reason.unwrap_or_default();
+        let escaped_reason = r.replace('\\', "\\\\").replace('\'', "\\'").replace('\n', " ");
+        let _ = overlay_win.eval(&format!(
+            "if (window.triggerOverlay) window.triggerOverlay({}, '{}');",
+            secs, escaped_reason
+        ));
+        Ok(())
+    } else {
+        Err("Overlay window not found".into())
+    }
 }
 
 #[tauri::command]
@@ -919,13 +908,21 @@ fn main() {
     let notify_auto = clip_notify_tx.clone();
     let config_hotkey = config_manager.clone();
     let config_auto = config_manager.clone();
+    let config_signal = config_manager.clone();
 
-    // 2. Setup Global Hotkey (Non-blocking WH_KEYBOARD_LL)
+    // 2. Initialize Vanguard-Safe Event Channel & Connect to ReplayRecorderManager
+    let (signal_tx, mut signal_rx) = unbounded_channel::<GameSignal>();
+    if let Ok(mut guard) = recorder_manager.lock() {
+        guard.set_signal_tx(signal_tx.clone());
+        guard.set_config_manager(config_manager.clone());
+    }
+
+    // 3. Setup Global Hotkey (Non-blocking WH_KEYBOARD_LL)
     let (hotkey_tx, mut hotkey_rx) = unbounded_channel();
     let hotkey_manager = HotkeyManager::new(hotkey_tx, current_config.hotkey_vk_code, current_config.hotkey_modifiers);
     hotkey_manager.start();
 
-    // 3. Hotkey Listener Worker (Instant Low-Latency F8 Execution)
+    // 4. Hotkey Listener Worker (Instant Low-Latency F8 Execution)
     let recorder_hotkey = recorder_manager.clone();
     tauri::async_runtime::spawn(async move {
         while hotkey_rx.recv().await.is_some() {
@@ -949,7 +946,7 @@ fn main() {
         }
     });
 
-    // 4. Initialize Zero-Copy DXGI Screen Capture -> MFT Hardware Encoder
+    // 5. Initialize Zero-Copy DXGI Screen Capture -> MFT Hardware Encoder
     let capture_engine = DxgiCaptureEngine::new();
     let recorder_capture = recorder_manager.clone();
 
@@ -959,7 +956,7 @@ fn main() {
         }
     });
 
-    // 5. Initialize WASAPI Loopback Audio -> MFT AAC Hardware Muxer
+    // 6. Initialize WASAPI Loopback Audio -> MFT AAC Hardware Muxer
     let audio_engine = WasapiAudioEngine::new();
     let recorder_audio = recorder_manager.clone();
     audio_engine.start_loopback_capture(move |chunk| {
@@ -968,12 +965,12 @@ fn main() {
         }
     });
 
-    // 6. Initialize Vanguard-Safe ShooterGame.log Tailer
-    let (signal_tx, mut signal_rx) = unbounded_channel::<GameSignal>();
+    // 7. Initialize Vanguard-Safe ShooterGame.log Combat Log Tailer
     let log_tailer = ShooterGameLogTailer::new();
-    log_tailer.start_tailing(signal_tx);
+    log_tailer.start_tailing(signal_tx.clone());
 
     let recorder_signal = recorder_manager.clone();
+    let signal_tx_replay = signal_tx.clone();
     let clip_generation = Arc::new(std::sync::atomic::AtomicU64::new(0));
     let latest_trigger_reason = Arc::new(tokio::sync::Mutex::new(String::new()));
 
@@ -981,8 +978,13 @@ fn main() {
         while let Some(signal) = signal_rx.recv().await {
             match signal {
                 GameSignal::Event(event) => {
+                    let is_spike = event.event_type == "spike_plant" || event.event_type == "spike_defuse";
+                    let spike_label = event.reason.clone().unwrap_or_else(|| "Spike Clutch".into());
                     if let Ok(mut guard) = recorder_signal.lock() {
                         guard.record_event(event);
+                    }
+                    if is_spike && config_signal.current.read().unwrap().auto_clip_spike_events {
+                        let _ = signal_tx_replay.send(GameSignal::TriggerClip { reason: spike_label });
                     }
                 }
                 GameSignal::TriggerClip { reason } => {
@@ -998,8 +1000,10 @@ fn main() {
                     let notify_spawn = notify_auto.clone();
                     let config_spawn = config_auto.clone();
                     tauri::async_runtime::spawn(async move {
-                        // 3.8s post-roll window allows subsequent kills in a gunfight to extend the highlight into 1 complete multi-kill clip!
-                        tokio::time::sleep(tokio::time::Duration::from_millis(3800)).await;
+                        // User-configured post-roll window allows subsequent kills in a gunfight to extend the highlight into 1 complete multi-kill clip!
+                        let post_roll_secs = config_spawn.current.read().unwrap().post_roll_seconds;
+                        let post_roll_ms = (post_roll_secs as u64 * 1000).clamp(1000, 10000);
+                        tokio::time::sleep(tokio::time::Duration::from_millis(post_roll_ms)).await;
                         let active_gen = gen_check.load(std::sync::atomic::Ordering::SeqCst);
                         if active_gen != current_gen {
                             println!("[AutoClip] Multi-kill extended! Cancelling earlier trigger #{} for active spree #{}", current_gen, active_gen);
@@ -1096,38 +1100,16 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 use tauri::Emitter;
                 while let Some(payload) = clip_notify_rx.recv().await {
+                    let default_secs = notify_cfg_manager
+                        .current
+                        .read()
+                        .map(|c| c.buffer_length_seconds as u64)
+                        .unwrap_or(30);
+                    let secs = payload.get("seconds").and_then(|v| v.as_u64()).unwrap_or(default_secs);
+                    let reason = payload.get("reason").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
                     // 1. Show the non-activating topmost overlay over Valorant
-                    if let Some(overlay_win) = app_handle.get_webview_window("overlay") {
-                        let _ = overlay_win.set_ignore_cursor_events(true);
-                        if let Ok(hwnd) = overlay_win.hwnd() {
-                            unsafe {
-                                use windows_sys::Win32::UI::WindowsAndMessaging::{
-                                    ShowWindow, SetWindowPos, HWND_TOPMOST, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_SHOWWINDOW,
-                                };
-                                ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
-                                SetWindowPos(
-                                    hwnd.0 as _,
-                                    HWND_TOPMOST,
-                                    24,
-                                    72,
-                                    460,
-                                    160,
-                                    SWP_NOACTIVATE | SWP_SHOWWINDOW,
-                                );
-                            }
-                        }
-                        let default_secs = notify_cfg_manager
-                            .current
-                            .read()
-                            .map(|c| c.buffer_length_seconds as u64)
-                            .unwrap_or(30);
-                        let secs = payload.get("seconds").and_then(|v| v.as_u64()).unwrap_or(default_secs);
-                        let reason = payload.get("reason").and_then(|v| v.as_str()).unwrap_or("");
-                        let _ = overlay_win.eval(&format!(
-                            "if (window.triggerOverlay) window.triggerOverlay({}, '{}');",
-                            secs, reason
-                        ));
-                    }
+                    let _ = show_overlay_window(app_handle.clone(), Some(secs), Some(reason));
 
                     // 2. Broadcast event to both webviews
                     let _ = app_handle.emit("clip-triggered", payload.clone());

@@ -124,12 +124,12 @@ export function ClipOverlayNotification(props?: { isStandaloneWindow?: boolean }
         aria-live="polite"
         className={
           props?.isStandaloneWindow
-            ? `relative w-full z-[99999] pointer-events-none select-none transition-all duration-350 ease-out ${
+            ? `relative w-full z-[99999] pointer-events-none select-none transition-all duration-300 ease-out ${
                 !isSlidIn() || isSlidingOut()
                   ? '-translate-x-[115%] opacity-0'
                   : 'translate-x-0 opacity-100'
               }`
-            : `fixed left-4 sm:left-6 md:left-8 top-16 sm:top-20 md:top-24 z-[99999] pointer-events-none select-none transition-all duration-350 ease-out ${
+            : `fixed left-4 sm:left-6 md:left-8 top-16 sm:top-20 md:top-24 z-[99999] pointer-events-none select-none transition-all duration-300 ease-out ${
                 !isSlidIn() || isSlidingOut()
                   ? '-translate-x-[120%] opacity-0'
                   : 'translate-x-0 opacity-100'
