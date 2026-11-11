@@ -1,47 +1,1641 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Valorant Clipper & Match Review</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-      (function () {
-        const stop = function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        };
-        window.addEventListener('contextmenu', stop, true);
-        document.addEventListener('contextmenu', stop, true);
-        window.addEventListener(
-          'keydown',
-          function (e) {
-            const k = (e.key || '').toUpperCase();
-            const c = e.keyCode || e.which;
-            const ctrl = e.ctrlKey || e.metaKey;
-            const shift = e.shiftKey;
-            if (
-              k === 'F12' ||
-              c === 123 ||
-              k === 'F5' ||
-              c === 116 ||
-              (ctrl && shift && (k === 'I' || k === 'J' || k === 'C' || k === 'K' || k === 'E' || k === 'M')) ||
-              (ctrl && (k === 'U' || k === 'R' || k === 'P' || k === 'S'))
-            ) {
-              return stop(e);
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eclipse — Zero-Latency Valorant Replay Buffer & Highlight Studio</title>
+  <meta name="description" content="Ultra-lightweight, zero-impact background clipping companion for competitive Valorant. 100% local, Vanguard compliant, and hardware-accelerated.">
+  <meta name="theme-color" content="#7C3AED">
+
+  <!-- OpenGraph Metadata -->
+  <meta property="og:title" content="Eclipse — Valorant Replay Engine">
+  <meta property="og:description" content="Zero-latency hardware replay buffer with automatic combat telemetry markers. 100% Vanguard safe.">
+  <meta property="og:image" content="assets/eclipse-banner-transparent.png">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" type="image/png" href="assets/eclipse-icon-transparent.png">
+
+  <!-- Fonts & CDN Tailwind -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              purple: '#7C3AED',
+              neon: '#9333EA',
+              light: '#C084FC',
+              dark: '#07080B',
+              surface: '#0A0B0E',
+              card: '#12141A',
+              border: '#2A2D34',
+              emerald: '#00D48F',
+              cyan: '#38BDF8',
+              crimson: '#E94F37',
+              gold: '#F6F740'
             }
           },
-          true
-        );
-      })();
-    </script>
-  </head>
-  <body oncontextmenu="return false;" class="text-[#FFFFFF] antialiased select-none overflow-hidden">
-    <div id="root"></div>
-    <script type="module" src="/src/index.tsx"></script>
-  </body>
-</html>
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          animation: {
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 6s ease-in-out infinite',
+            'glow': 'glow 3s ease-in-out infinite alternate',
+            'spin-slow': 'spin 12s linear infinite',
+            'radar': 'radar 3s linear infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-8px)' },
+            },
+            glow: {
+              '0%': { filter: 'drop-shadow(0 0 15px rgba(147, 51, 234, 0.4))' },
+              '100%': { filter: 'drop-shadow(0 0 35px rgba(147, 51, 234, 0.8))' },
+            },
+            radar: {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(360deg)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
 
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #07080B; }
+    ::-webkit-scrollbar-thumb { background: #2A2D34; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #7C3AED; }
+
+    /* Tactical Glass & Gradients */
+    .glass-panel {
+      background: rgba(18, 20, 26, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(147, 51, 234, 0.22);
+    }
+    .glass-card {
+      background: rgba(18, 20, 26, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(42, 45, 52, 0.85);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(168, 85, 247, 0.6);
+      transform: translateY(-5px);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.75), 0 0 28px rgba(147, 51, 234, 0.28);
+    }
+    .text-glow {
+      text-shadow: 0 0 20px rgba(192, 132, 252, 0.5);
+    }
+    .btn-tactile:active {
+      transform: scale(0.97);
+    }
+    .scanline-overlay {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+    /* Animated Benchmark Bar Shimmer */
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+    .bar-shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .bar-shimmer::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      animation: shimmer 2.5s infinite;
+    }
+    /* Custom video range inputs */
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0 0 8px #9333EA;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-[#07080B] text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-[#7C3AED] selection:text-white relative min-h-screen">
+
+  <!-- Interactive Cyber Mesh Canvas (Lives & Moves with cursor) -->
+  <canvas id="bg-canvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+  <!-- Dynamic Cursor Spotlight following mouse smoothly -->
+  <div id="cursor-spotlight" class="fixed top-0 left-0 size-[650px] -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none z-0 transition-opacity duration-300 opacity-60 mix-blend-screen" style="background: radial-gradient(circle, rgba(147, 51, 234, 0.15) 0%, rgba(56, 189, 248, 0.05) 45%, transparent 70%);"></div>
+
+  <!-- Ambient Radiant Glow Orbs -->
+  <div class="fixed -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[550px] bg-gradient-to-b from-[#7C3AED]/20 via-[#9333EA]/10 to-transparent blur-[140px] pointer-events-none z-0"></div>
+  <div class="fixed top-1/3 -right-64 w-[500px] h-[500px] bg-[#3B82F6]/10 blur-[150px] pointer-events-none z-0"></div>
+  <div class="fixed bottom-10 -left-64 w-[500px] h-[500px] bg-[#00D48F]/10 blur-[150px] pointer-events-none z-0"></div>
+
+  <!-- Top Sticky Navigation Bar -->
+  <header class="sticky top-0 z-50 w-full glass-panel border-b border-[#2A2D34]/80 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo & Name -->
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="relative size-9 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#9333EA] p-0.5 shadow-[0_0_15px_rgba(147,51,234,0.5)] group-hover:shadow-[0_0_22px_rgba(147,51,234,0.8)] transition-all">
+          <img src="assets/eclipse-icon-transparent.png" alt="Eclipse" class="w-full h-full object-contain" />
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="font-mono font-black text-base tracking-wider uppercase text-white group-hover:text-[#C084FC] transition-colors">ECLIPSE</span>
+            <span class="px-1.5 py-0.2 rounded text-[9px] font-black uppercase font-mono bg-[#7C3AED]/30 text-[#C084FC] border border-[#9333EA]/50">PRO</span>
+            <span class="size-1.5 rounded-full bg-[#00D48F] animate-ping"></span>
+          </div>
+          <span class="text-[9px] font-mono tracking-widest text-slate-400 uppercase -mt-0.5">Valorant Replay Engine</span>
+        </div>
+      </a>
+
+      <!-- Center Nav Links -->
+      <nav class="hidden md:flex items-center gap-6 text-xs font-mono font-bold text-slate-300">
+        <a href="#simulator" class="hover:text-[#C084FC] transition-colors flex items-center gap-1.5">
+          <span class="size-1.5 rounded-full bg-[#7C3AED]"></span>
+          <span>Live Demo</span>
+        </a>
+        <a href="#benchmarks" class="hover:text-[#00D48F] transition-colors flex items-center gap-1.5">
+          <span class="size-1.5 rounded-full bg-[#00D48F]"></span>
+          <span>Benchmarks</span>
+        </a>
+        <a href="#architecture" class="hover:text-[#38BDF8] transition-colors flex items-center gap-1.5">
+          <span class="size-1.5 rounded-full bg-[#38BDF8]"></span>
+          <span>Engine Architecture</span>
+        </a>
+        <a href="#vanguard" class="hover:text-[#F6F740] transition-colors flex items-center gap-1.5">
+          <span class="size-1.5 rounded-full bg-[#F6F740]"></span>
+          <span>Vanguard Safety</span>
+        </a>
+      </nav>
+
+      <!-- Right Action Buttons -->
+      <div class="flex items-center gap-3">
+        <a
+          href="https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#2A2D34] bg-[#0A0B0E] hover:bg-[#12141A] text-xs font-mono text-slate-300 hover:text-white transition-all btn-tactile"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          <span>GitHub</span>
+        </a>
+
+        <a
+          href="https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:from-[#6D28D9] hover:to-[#7E22CE] text-white text-xs font-mono font-bold shadow-[0_0_15px_rgba(147,51,234,0.4)] transition-all btn-tactile"
+        >
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download v0.1.1</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative z-10 pt-16 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center flex flex-col items-center">
+    
+    <!-- Top Cyber Pill Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#12141A] border border-[#9333EA]/50 shadow-[0_0_20px_rgba(147,51,234,0.3)] mb-6 animate-float">
+      <span class="size-2 rounded-full bg-[#00D48F] animate-pulse"></span>
+      <span class="text-xs font-mono font-bold text-[#C084FC] uppercase tracking-wider">
+        Next-Gen Direct3D 11 Capture Engine
+      </span>
+      <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#7C3AED] text-white font-black">v0.1.1</span>
+    </div>
+
+    <!-- Main Title -->
+    <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-5xl leading-[1.1] font-sans">
+      Zero Latency. Zero FPS Drop.
+      <span class="block bg-gradient-to-r from-[#C084FC] via-[#9333EA] to-[#38BDF8] bg-clip-text text-transparent text-glow">
+        The Pure Replay Studio For Valorant.
+      </span>
+    </h1>
+
+    <!-- Subtitle -->
+    <p class="mt-6 text-base sm:text-lg text-slate-300 max-w-3xl leading-relaxed">
+      Never lose an Ace, Clutch, or 1v5 again. Eclipse maintains a rolling hardware NVMe buffer using direct GPU frame duplication without system RAM round-trips, bloated web overlays, or Riot Vanguard penalties.
+    </p>
+
+    <!-- Call-to-Action Buttons -->
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+      <a
+        href="https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center gap-3 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#7C3AED] via-[#9333EA] to-[#7C3AED] text-white font-mono font-black text-sm tracking-wide shadow-[0_0_28px_rgba(147,51,234,0.6)] hover:shadow-[0_0_40px_rgba(147,51,234,0.9)] hover:scale-105 transition-all btn-tactile border border-[#C084FC]/60"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>DOWNLOAD ECLIPSE SETUP (WINDOWS)</span>
+      </a>
+
+      <a
+        href="#simulator"
+        class="flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-[#12141A] hover:bg-[#1A1D24] text-white font-mono font-bold text-sm border border-[#2A2D34] hover:border-[#9333EA]/60 transition-all btn-tactile shadow-md"
+      >
+        <svg class="size-5 text-[#00D48F]" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>LAUNCH INTERACTIVE DEMO</span>
+      </a>
+    </div>
+
+    <!-- Quick Highlights Badges -->
+    <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl w-full">
+      <div class="p-3 rounded-xl bg-[#0A0B0E]/80 border border-[#2A2D34] flex flex-col items-center">
+        <span class="text-base font-black font-mono text-[#00D48F]">0 FPS DROP</span>
+        <span class="text-[10px] font-mono text-slate-400 mt-0.5">&lt; 1% CPU Direct GPU VRAM</span>
+      </div>
+      <div class="p-3 rounded-xl bg-[#0A0B0E]/80 border border-[#2A2D34] flex flex-col items-center">
+        <span class="text-base font-black font-mono text-[#38BDF8]">&lt; 16 MB RAM</span>
+        <span class="text-[10px] font-mono text-slate-400 mt-0.5">Circular NVMe Spooler</span>
+      </div>
+      <div class="p-3 rounded-xl bg-[#0A0B0E]/80 border border-[#2A2D34] flex flex-col items-center">
+        <span class="text-base font-black font-mono text-[#F6F740]">100% VANGUARD SAFE</span>
+        <span class="text-[10px] font-mono text-slate-400 mt-0.5">Zero DLL Hooks / Sanitized Logs</span>
+      </div>
+      <div class="p-3 rounded-xl bg-[#0A0B0E]/80 border border-[#2A2D34] flex flex-col items-center">
+        <span class="text-base font-black font-mono text-[#C084FC]">ED25519 SIGNED</span>
+        <span class="text-[10px] font-mono text-slate-400 mt-0.5">Minisign Tamper-Proof Updates</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE APP SIMULATOR SECTION ("DITTO SAME AS MAIN SOFTWARE") -->
+  <section id="simulator" class="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center max-w-3xl mx-auto mb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7C3AED]/20 border border-[#9333EA]/40 text-xs font-mono font-bold text-[#C084FC] uppercase tracking-wider mb-2">
+        <span class="size-2 rounded-full bg-[#00D48F] animate-ping"></span>
+        <span>Interactive In-Browser Application Experience</span>
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white font-mono">Experience Eclipse In Your Browser</h2>
+      <p class="text-sm text-slate-400 mt-2">
+        Test the exact desktop application UI. Switch between the <strong>Studio &amp; Timeline</strong> and <strong>Settings &amp; Engine</strong>, scrub through real gameplay footage recorded by Eclipse, or click <strong class="text-[#C084FC]">Simulate F8</strong> to test the in-game HUD.
+      </p>
+    </div>
+
+    <!-- The Desktop App Shell (Exact replica of src/App.tsx) -->
+    <div class="w-full rounded-2xl bg-[#07080B] border-2 border-[#9333EA]/50 shadow-[0_20px_60px_rgba(0,0,0,0.9),0_0_35px_rgba(147,51,234,0.35)] overflow-hidden flex flex-col">
+      
+      <!-- Native Command Bar Header (DITTO SAME) -->
+      <div class="h-12 bg-[#0A0B0E]/95 border-b border-[#2A2D34] flex items-center justify-between px-3 z-40 shrink-0 gap-3 select-none">
+        
+        <!-- Left: Brand + Navigation Tabs -->
+        <div class="flex items-center gap-3.5 min-w-0">
+          <div class="flex items-center gap-2 shrink-0 py-0.5">
+            <img src="assets/eclipse-icon-transparent.png" alt="Eclipse" class="h-7 w-auto object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]" />
+            <div class="flex items-center gap-1.5 leading-none">
+              <span class="font-black tracking-widest text-xs uppercase font-mono text-white">ECLIPSE</span>
+              <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase font-mono bg-[#7C3AED]/25 text-[#C084FC] border border-[#9333EA]/40">PRO</span>
+            </div>
+          </div>
+
+          <!-- Tabs: Studio & Timeline vs Settings & Engine -->
+          <nav class="flex items-center gap-1 bg-[#12141A]/90 p-0.5 rounded-lg border border-[#2A2D34]">
+            <button
+              id="tab-btn-studio"
+              type="button"
+              class="px-3 py-1 rounded-md text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all bg-[#7C3AED] text-white shadow-sm border border-[#9333EA]/60 shadow-[0_0_12px_rgba(124,58,237,0.4)]"
+            >
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+              <span>Studio &amp; Timeline</span>
+            </button>
+            <button
+              id="tab-btn-settings"
+              type="button"
+              class="px-3 py-1 rounded-md text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all text-slate-400 hover:text-white hover:bg-[#1A1D24]"
+            >
+              <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <span>Settings &amp; Engine</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Center: Simulate F8 Action Trigger -->
+        <div class="flex items-center gap-2">
+          <button
+            id="simulate-f8-btn"
+            type="button"
+            class="flex items-center gap-2 px-3 py-1 rounded-md bg-[#7C3AED]/30 hover:bg-[#7C3AED] text-[#C084FC] hover:text-white border border-[#9333EA]/60 text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(147,51,234,0.3)] btn-tactile"
+            title="Simulate pressing the F8 hotkey during a game"
+          >
+            <span class="size-2 rounded-full bg-[#00D48F] animate-ping"></span>
+            <span>⚡ SIMULATE F8 HOTKEY</span>
+            <span class="text-[9px] px-1 py-0.2 rounded bg-black/40 text-slate-300">SAVES CLIP</span>
+          </button>
+        </div>
+
+        <!-- Right: Tray Mode & Desktop Window Controls -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            id="btn-tray-mode"
+            type="button"
+            class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-white bg-[#12141A] hover:bg-[#7C3AED] rounded-md btn-tactile border border-[#2A2D34] transition-all"
+            title="Minimize to Windows System Tray"
+          >
+            <svg class="size-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+            <span>Tray Mode</span>
+          </button>
+
+          <!-- Window Control Buttons -->
+          <div class="flex items-center gap-0.5 border-l border-[#2A2D34] pl-2">
+            <button id="win-min-btn" class="size-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#1A1D24]"><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2"/></button>
+            <button id="win-max-btn" class="size-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#1A1D24]"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/></button>
+            <button id="win-close-btn" class="size-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-red-600"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKSPACE VIEW 1: STUDIO & TIMELINE (Active by default) -->
+      <div id="view-studio" class="flex flex-col lg:flex-row h-[620px] w-full overflow-hidden relative">
+        
+        <!-- PANE 1: Left Clips Vault (ClipsSidebar.tsx) -->
+        <div class="w-full lg:w-72 bg-[#0A0B0E]/95 border-b lg:border-b-0 lg:border-r border-[#2A2D34] p-3 flex flex-col gap-3 shrink-0">
+          
+          <!-- Vault Header & Count -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="size-2 rounded-full bg-[#00D48F]"></span>
+              <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">Highlight Vault</span>
+            </div>
+            <span class="px-1.5 py-0.5 rounded bg-[#12141A] border border-[#2A2D34] text-[9px] font-mono text-[#C084FC]">3 CLIPS</span>
+          </div>
+
+          <!-- Search Input -->
+          <div class="relative">
+            <input
+              type="text"
+              placeholder="Filter by agent or map..."
+              class="w-full bg-[#12141A] border border-[#2A2D34] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#9333EA]"
+              readonly
+              value="Ascent A Site"
+            />
+            <svg class="size-3.5 absolute right-2.5 top-2.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+
+          <!-- Clips List -->
+          <div id="clip-list" class="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
+            
+            <!-- Clip 1: User's Real Valorant Clip! -->
+            <button
+              type="button"
+              data-clip="0"
+              class="clip-card active p-2 rounded-xl border text-left flex flex-col gap-1.5 transition-all bg-[#12141A] border-[#9333EA] shadow-[0_0_12px_rgba(147,51,234,0.3)]"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white truncate">Valorant_Clip_20261110.mp4</span>
+                <span class="px-1.5 py-0.2 rounded bg-[#00D48F] text-black text-[9px] font-mono font-black">ACTIVE</span>
+              </div>
+              <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span class="text-[#00D48F]">● Real Recorded Clip</span>
+                <span class="text-[#C084FC]">1080p 60fps</span>
+              </div>
+            </button>
+
+            <!-- Clip 2: Simulated Reyna Clutch -->
+            <button
+              type="button"
+              data-clip="1"
+              class="clip-card p-2 rounded-xl border text-left flex flex-col gap-1.5 transition-all bg-[#0A0B0E] border-[#2A2D34] hover:border-[#9333EA]/60 text-slate-300 hover:text-white"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white truncate">Reyna 1v3 Clutch — Bind</span>
+                <span class="px-1.5 py-0.2 rounded bg-[#F6F740] text-black text-[9px] font-mono font-black">1v3</span>
+              </div>
+              <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span>30.0s • 1080p60</span>
+                <span class="text-[#C084FC]">Competitive</span>
+              </div>
+            </button>
+
+            <!-- Clip 3: Simulated Cypher Setup -->
+            <button
+              type="button"
+              data-clip="2"
+              class="clip-card p-2 rounded-xl border text-left flex flex-col gap-1.5 transition-all bg-[#0A0B0E] border-[#2A2D34] hover:border-[#9333EA]/60 text-slate-300 hover:text-white"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white truncate">Cypher B Garage Setup</span>
+                <span class="px-1.5 py-0.2 rounded bg-[#38BDF8] text-black text-[9px] font-mono font-black">2K</span>
+              </div>
+              <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span>30.0s • 1080p60</span>
+                <span class="text-slate-400">Overtime</span>
+              </div>
+            </button>
+          </div>
+
+          <!-- Vault NVMe Spooler Status Footer -->
+          <div class="p-2 rounded-lg bg-[#12141A] border border-[#2A2D34] text-[10px] font-mono flex items-center justify-between text-slate-400">
+            <span>Buffer: 15.2 MB Spooled</span>
+            <span class="text-[#00D48F] font-bold">HEALTHY</span>
+          </div>
+        </div>
+
+        <!-- PANE 2: Center Theater Stage & Real Working HTML5 Video Player -->
+        <div class="flex-1 min-w-0 flex flex-col bg-[#050608] relative">
+          
+          <!-- Video Stage Container -->
+          <div id="video-canvas-stage" class="relative flex-1 bg-black flex items-center justify-center overflow-hidden group">
+            
+            <!-- Real HTML5 Video Tag with user's clip! -->
+            <video
+              id="demo-video-player"
+              src="assets/demo-clip.mp4"
+              playsinline
+              preload="auto"
+              class="w-full h-full object-contain cursor-pointer"
+            ></video>
+
+            <!-- Scanline Tactical Effect -->
+            <div class="absolute inset-0 scanline-overlay pointer-events-none opacity-20"></div>
+
+            <!-- Top In-Video HUD Header -->
+            <div class="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-20">
+              <div class="px-2.5 py-1 rounded-lg bg-[#0A0B0E]/85 backdrop-blur-md border border-[#2A2D34] text-[11px] font-mono text-white flex items-center gap-2">
+                <span class="size-2 rounded-full bg-[#00D48F] animate-pulse"></span>
+                <span id="stage-clip-title" class="font-bold">Valorant_Clip_20261110.mp4</span>
+              </div>
+
+              <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#0A0B0E]/85 backdrop-blur-md border border-[#2A2D34] text-[10px] font-mono text-slate-300">
+                <span class="text-[#00D48F] font-bold">DXGI ZERO-COPY</span>
+                <span>•</span>
+                <span>NVENC H.264</span>
+                <span>•</span>
+                <span>60 FPS</span>
+              </div>
+            </div>
+
+            <!-- Center Big Play Button (Fades out when playing) -->
+            <button
+              id="center-play-overlay"
+              type="button"
+              class="absolute inset-0 m-auto size-16 rounded-full bg-[#7C3AED]/90 hover:bg-[#9333EA] text-white flex items-center justify-center border-2 border-[#C084FC] shadow-[0_0_35px_rgba(147,51,234,0.7)] transition-all hover:scale-110 btn-tactile z-30"
+              title="Click to Play"
+            >
+              <svg id="center-play-icon" class="size-8 ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg id="center-pause-icon" class="size-8 hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </button>
+
+            <!-- Kill Event Popup Banner -->
+            <div id="kill-popup" class="absolute top-14 px-4 py-1.5 rounded-xl bg-[#E94F37]/90 border border-white shadow-[0_0_24px_rgba(233,79,55,0.7)] text-white font-mono font-black text-sm tracking-wider flex items-center gap-2 transition-all opacity-0 pointer-events-none z-30">
+              <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.2 8.8 22 12 15.2 15.2 12 22 8.8 15.2 2 12 8.8 8.8 12 2"/></svg>
+              <span id="kill-banner-text">HEADSHOT ELIMINATION</span>
+            </div>
+
+            <!-- IN-GAME HUD OVERLAY (Simulates pressing F8) -->
+            <div
+              id="hud-overlay-card"
+              class="absolute left-4 top-4 z-50 w-72 rounded-2xl bg-[#0A0B0E] border-2 border-[#9333EA] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_24px_rgba(147,51,234,0.5)] flex flex-col gap-1.5 transition-all duration-300 -translate-x-[125%] opacity-0 pointer-events-none"
+            >
+              <div class="flex items-center gap-3">
+                <img src="assets/eclipse-banner-transparent.png" alt="" class="w-14 max-h-9 object-contain" />
+                <div class="flex flex-col min-w-0 flex-1 leading-tight">
+                  <div class="flex items-center gap-1.5">
+                    <span class="size-2 rounded-full bg-[#00D48F] animate-ping shrink-0"></span>
+                    <span class="text-xs font-black font-mono text-white">30 SEC CLIPPED</span>
+                  </div>
+                  <div class="text-[10px] font-mono font-bold text-[#C084FC]">
+                    saved via <strong class="text-white">Eclipse Engine</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full h-1 bg-[#1E222A] rounded-full overflow-hidden mt-1">
+                <div class="h-full bg-gradient-to-r from-[#7C3AED] to-[#00D48F] w-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Precision Timeline & Scrubber Bar (TimelineBar.tsx) -->
+          <div class="h-24 bg-[#0A0B0E] border-t border-[#2A2D34] px-4 flex flex-col justify-center gap-2 select-none">
+            
+            <!-- Interactive Scrubber Track -->
+            <div class="relative w-full h-5 flex items-center cursor-pointer group" id="timeline-track">
+              <!-- Audio waveform backplate -->
+              <div class="w-full h-2 bg-[#1A1D24] rounded-full overflow-hidden relative">
+                <div id="timeline-progress" class="h-full bg-gradient-to-r from-[#7C3AED] to-[#9333EA] w-0 transition-none"></div>
+              </div>
+
+              <!-- Interactive Draggable Playhead -->
+              <div id="timeline-playhead" class="absolute top-1/2 -translate-y-1/2 left-0 size-3.5 rounded-full bg-white border-2 border-[#9333EA] shadow-[0_0_10px_#FFFFFF] pointer-events-none"></div>
+
+              <!-- Event Markers (Kill/Headshot timestamps) -->
+              <div data-seek="5" class="marker absolute top-1/2 -translate-y-1/2 left-[16%] size-3 rounded-full bg-[#F6F740] border border-black shadow-[0_0_8px_#F6F740] cursor-pointer hover:scale-150 transition-transform" title="Vandal Headshot @ 0:05"></div>
+              <div data-seek="12" class="marker absolute top-1/2 -translate-y-1/2 left-[40%] size-3 rounded-full bg-[#E94F37] border border-black shadow-[0_0_8px_#E94F37] cursor-pointer hover:scale-150 transition-transform" title="Double Kill @ 0:12"></div>
+              <div data-seek="19" class="marker absolute top-1/2 -translate-y-1/2 left-[63%] size-3 rounded-full bg-[#E94F37] border border-black shadow-[0_0_8px_#E94F37] cursor-pointer hover:scale-150 transition-transform" title="Triple Kill @ 0:19"></div>
+              <div data-seek="26" class="marker absolute top-1/2 -translate-y-1/2 left-[86%] size-3 rounded-full bg-[#00D48F] border border-black shadow-[0_0_8px_#00D48F] cursor-pointer hover:scale-150 transition-transform" title="Clutch Round Win @ 0:26"></div>
+            </div>
+
+            <!-- Playback Controls, Timecode, Speed, Volume -->
+            <div class="flex items-center justify-between text-xs font-mono text-slate-300">
+              
+              <!-- Left: Play/Pause, Skip & Timecode -->
+              <div class="flex items-center gap-3">
+                <button id="btn-play-pause" type="button" class="size-7 rounded-md bg-[#12141A] hover:bg-[#7C3AED] text-white flex items-center justify-center transition-colors">
+                  <svg id="ctrl-play-icon" class="size-3.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <svg id="ctrl-pause-icon" class="size-3.5 hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+
+                <button id="btn-rewind" type="button" class="size-7 rounded-md bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white flex items-center justify-center text-[10px]" title="Rewind 5s">
+                  -5s
+                </button>
+                <button id="btn-forward" type="button" class="size-7 rounded-md bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white flex items-center justify-center text-[10px]" title="Forward 5s">
+                  +5s
+                </button>
+
+                <span id="demo-timecode" class="text-white font-bold tabular-nums ml-1">00:00 / 00:30</span>
+              </div>
+
+              <!-- Right: Speed, Volume & Export Simulation -->
+              <div class="flex items-center gap-3">
+                <!-- Playback Speed -->
+                <div class="hidden sm:flex items-center gap-1 text-[11px]">
+                  <span class="text-slate-500">Speed:</span>
+                  <select id="speed-select" class="bg-[#12141A] border border-[#2A2D34] rounded px-1.5 py-0.5 text-white font-mono focus:outline-none">
+                    <option value="1">1.0x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2.0x</option>
+                  </select>
+                </div>
+
+                <!-- Volume Toggle -->
+                <button id="btn-mute" type="button" class="size-7 rounded-md bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white flex items-center justify-center" title="Mute/Unmute">
+                  <svg id="vol-icon" class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                </button>
+
+                <!-- Toast Trigger Simulation -->
+                <button id="btn-export-clip" type="button" class="px-2.5 py-1 rounded bg-[#7C3AED]/30 hover:bg-[#7C3AED] text-[#C084FC] hover:text-white border border-[#9333EA]/60 text-[10px] font-bold transition-all btn-tactile">
+                  Export MP4
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANE 3: Right Round Telemetry Inspector (RightPanel.tsx) -->
+        <div class="w-full lg:w-80 bg-[#0A0B0E]/95 border-t lg:border-t-0 lg:border-l border-[#2A2D34] p-4 flex flex-col gap-3.5 shrink-0 overflow-y-auto">
+          
+          <!-- User Profile Card -->
+          <div class="rounded-xl bg-[#12141A] border border-[#2A2D34] p-3 flex items-center gap-3 shadow-sm">
+            <div class="size-12 rounded-xl overflow-hidden border-2 border-[#9333EA] bg-black shadow-[0_0_12px_rgba(147,51,234,0.4)] shrink-0">
+              <img id="inspector-agent-img" src="https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/displayicon.png" alt="Jett" class="w-full h-full object-cover scale-110" />
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-xs font-bold text-white truncate">CutieSky #2136</span>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span id="inspector-agent-name" class="px-1.5 py-0.2 rounded bg-[#7C3AED] text-white text-[9px] font-mono font-black uppercase">JETT</span>
+                <span class="text-[9px] font-mono text-[#06B6D4] font-bold">Platinum 1 (LVL 142)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Round KDA -->
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-2 rounded-lg bg-[#12141A] border border-[#2A2D34]">
+              <span class="text-[9px] font-mono text-slate-500 uppercase block">Kills</span>
+              <span id="inspector-kills" class="text-sm font-mono font-black text-[#00D48F]">4</span>
+            </div>
+            <div class="p-2 rounded-lg bg-[#12141A] border border-[#2A2D34]">
+              <span class="text-[9px] font-mono text-slate-500 uppercase block">Deaths</span>
+              <span id="inspector-deaths" class="text-sm font-mono font-black text-slate-400">0</span>
+            </div>
+            <div class="p-2 rounded-lg bg-[#12141A] border border-[#2A2D34]">
+              <span class="text-[9px] font-mono text-slate-500 uppercase block">Assists</span>
+              <span id="inspector-assists" class="text-sm font-mono font-black text-[#C084FC]">1</span>
+            </div>
+          </div>
+
+          <!-- Synchronized Combat Killfeed (Populated from Valorant Log) -->
+          <div class="flex flex-col gap-1.5 flex-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Synchronized Killfeed</span>
+              <span class="text-[9px] font-mono text-[#00D48F]">ShooterGame.log</span>
+            </div>
+            
+            <div id="inspector-events" class="flex flex-col gap-1.5 text-xs font-mono">
+              <div class="flex items-center justify-between p-2 rounded bg-[#12141A] border border-[#2A2D34]">
+                <div class="flex items-center gap-1.5">
+                  <span class="size-1.5 rounded-full bg-[#F6F740]"></span>
+                  <span class="text-white text-xs">Vandal Headshot ➔ Omen</span>
+                </div>
+                <span class="text-[10px] text-[#C084FC] font-bold">0:05</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded bg-[#12141A] border border-[#2A2D34]">
+                <div class="flex items-center gap-1.5">
+                  <span class="size-1.5 rounded-full bg-[#E94F37]"></span>
+                  <span class="text-white text-xs">Tailwind Dash ➔ Sova</span>
+                </div>
+                <span class="text-[10px] text-[#C084FC] font-bold">0:12</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded bg-[#12141A] border border-[#2A2D34]">
+                <div class="flex items-center gap-1.5">
+                  <span class="size-1.5 rounded-full bg-[#E94F37]"></span>
+                  <span class="text-white text-xs">Blade Storm ➔ Killjoy</span>
+                </div>
+                <span class="text-[10px] text-[#C084FC] font-bold">0:19</span>
+              </div>
+              <div class="flex items-center justify-between p-2 rounded bg-[#12141A] border border-[#2A2D34]">
+                <div class="flex items-center gap-1.5">
+                  <span class="size-1.5 rounded-full bg-[#00D48F]"></span>
+                  <span class="text-white text-xs font-bold">ROUND ACE ➔ Reyna</span>
+                </div>
+                <span class="text-[10px] text-[#00D48F] font-bold">0:26</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div class="pt-2 border-t border-[#2A2D34] flex gap-2">
+            <button id="btn-share-modal" type="button" class="flex-1 py-1.5 rounded-lg bg-[#12141A] hover:bg-[#1A1D24] border border-[#2A2D34] text-xs font-mono text-white text-center transition-colors">
+              Share / Discord
+            </button>
+            <button id="btn-sync-events" type="button" class="px-3 py-1.5 rounded-lg bg-[#7C3AED]/20 hover:bg-[#7C3AED]/40 border border-[#9333EA]/40 text-xs font-mono text-[#C084FC] transition-colors" title="Re-sync match events">
+              ↻ Sync
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKSPACE VIEW 2: SETTINGS & ENGINE (SettingsPanel.tsx DITTO SAME) -->
+      <div id="view-settings" class="hidden flex-col lg:flex-row h-[620px] w-full overflow-hidden bg-[#0A0B0E]">
+        
+        <!-- Left Settings Navigation -->
+        <div class="w-full lg:w-60 bg-[#07080B] border-b lg:border-b-0 lg:border-r border-[#2A2D34] p-3 flex flex-col gap-1 shrink-0">
+          <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest px-2 py-1">Engine Preferences</span>
+          <button class="settings-subtab active text-left px-3 py-2 rounded-lg bg-[#7C3AED] text-white text-xs font-mono font-bold flex items-center justify-between">
+            <span>Video &amp; Resolution</span>
+            <span class="size-1.5 rounded-full bg-[#00D48F]"></span>
+          </button>
+          <button class="settings-subtab text-left px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#12141A] text-xs font-mono font-medium">
+            Audio &amp; Mic Tracks
+          </button>
+          <button class="settings-subtab text-left px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#12141A] text-xs font-mono font-medium">
+            Combat Triggers (Auto-Clip)
+          </button>
+          <button class="settings-subtab text-left px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#12141A] text-xs font-mono font-medium">
+            Hotkeys &amp; Storage
+          </button>
+          <button class="settings-subtab text-left px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#12141A] text-xs font-mono font-medium">
+            Updates &amp; Minisign
+          </button>
+        </div>
+
+        <!-- Center Settings Content -->
+        <div class="flex-1 p-6 overflow-y-auto space-y-6">
+          <div>
+            <h3 class="text-lg font-bold font-mono text-white flex items-center gap-2">
+              <span>DirectX 11 Video Duplication Engine</span>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-[#00D48F]/20 text-[#00D48F] border border-[#00D48F]/40">Active</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Configured for zero system RAM transfers and direct GPU VRAM NVENC encoding.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Encoder Selection -->
+            <div class="p-4 rounded-xl bg-[#12141A] border border-[#2A2D34] space-y-2">
+              <label class="text-xs font-mono text-slate-300 font-bold block">Hardware Encoder</label>
+              <select class="w-full bg-[#0A0B0E] border border-[#2A2D34] rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-[#9333EA]">
+                <option selected>NVIDIA NVENC (Direct3D 11 Zero-Copy)</option>
+                <option>AMD AMF Hardware Encoder</option>
+                <option>Intel QuickSync Video (QSV)</option>
+                <option>Software CPU (x264 - Low Impact)</option>
+              </select>
+              <span class="text-[10px] text-[#00D48F] font-mono block">✓ Hardware acceleration detected &amp; active</span>
+            </div>
+
+            <!-- Target Resolution -->
+            <div class="p-4 rounded-xl bg-[#12141A] border border-[#2A2D34] space-y-2">
+              <label class="text-xs font-mono text-slate-300 font-bold block">Capture Resolution</label>
+              <select class="w-full bg-[#0A0B0E] border border-[#2A2D34] rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-[#9333EA]">
+                <option selected>Native Display (1920x1080)</option>
+                <option>1440p Quad HD (2560x1440)</option>
+                <option>4K Ultra HD (3840x2160)</option>
+              </select>
+              <span class="text-[10px] text-slate-400 font-mono block">Captures exact fullscreen game bounds</span>
+            </div>
+
+            <!-- Target Framerate -->
+            <div class="p-4 rounded-xl bg-[#12141A] border border-[#2A2D34] space-y-2">
+              <label class="text-xs font-mono text-slate-300 font-bold block">Target FPS</label>
+              <div class="flex gap-2">
+                <button class="flex-1 py-1.5 rounded-lg bg-[#7C3AED] text-white font-mono text-xs font-bold border border-[#9333EA]">60 FPS</button>
+                <button class="flex-1 py-1.5 rounded-lg bg-[#0A0B0E] text-slate-400 hover:text-white font-mono text-xs border border-[#2A2D34]">120 FPS</button>
+                <button class="flex-1 py-1.5 rounded-lg bg-[#0A0B0E] text-slate-400 hover:text-white font-mono text-xs border border-[#2A2D34]">240 FPS</button>
+              </div>
+            </div>
+
+            <!-- Target Bitrate -->
+            <div class="p-4 rounded-xl bg-[#12141A] border border-[#2A2D34] space-y-2">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-slate-300 font-bold">Bitrate (kbps)</span>
+                <span class="text-[#C084FC] font-bold">50,000 kbps (50 Mbps)</span>
+              </div>
+              <input type="range" min="10000" max="80000" step="5000" value="50000" class="w-full accent-[#7C3AED]" />
+              <span class="text-[10px] text-slate-400 font-mono block">Esports lossless quality for high-motion combat</span>
+            </div>
+          </div>
+
+          <!-- Automated Combat Triggers (ShooterGame.log) -->
+          <div class="p-4 rounded-xl bg-[#12141A] border border-[#2A2D34] space-y-3">
+            <h4 class="text-xs font-mono font-bold text-white uppercase tracking-wider">Automated Combat Event Markers</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] cursor-pointer">
+                <input type="checkbox" checked class="accent-[#7C3AED]" />
+                <span class="text-white">Auto-Mark Headshots</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] cursor-pointer">
+                <input type="checkbox" checked class="accent-[#7C3AED]" />
+                <span class="text-white">Auto-Mark Multikills / Aces</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] cursor-pointer">
+                <input type="checkbox" checked class="accent-[#7C3AED]" />
+                <span class="text-white">Auto-Mark Spike Plants/Defuses</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Status Toast Simulation (Slide in when actions are triggered) -->
+      <div id="sim-toast" class="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-[#0A0B0E] border border-[#9333EA] shadow-[0_10px_30px_rgba(0,0,0,0.9),0_0_20px_rgba(147,51,234,0.4)] text-white font-mono text-xs flex items-center gap-2.5 transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+        <span class="size-2 rounded-full bg-[#00D48F]"></span>
+        <span id="sim-toast-text">Clip exported successfully!</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURAL COMPARISON & VISUAL BENCHMARK GRAPHS -->
+  <section id="benchmarks" class="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center max-w-3xl mx-auto mb-10">
+      <span class="px-3 py-1 rounded-full bg-[#00D48F]/15 text-[#00D48F] border border-[#00D48F]/30 text-xs font-mono font-bold uppercase tracking-wider">
+        Competitive Differentials &amp; Benchmarks
+      </span>
+      <h2 class="text-3xl sm:text-5xl font-extrabold text-white mt-3 font-mono">Why Eclipse Outperforms The Rest</h2>
+      <p class="text-sm text-slate-300 mt-3 leading-relaxed">
+        Most clipping software relies on heavy Chromium web wrappers (CEF/Electron) or invasive Direct3D game hooks. Eclipse is engineered in native Rust using direct Microsoft DXGI frame duplication.
+      </p>
+
+      <!-- Toggle Switch between Visual Graphs & Technical Matrix -->
+      <div class="mt-6 inline-flex p-1 rounded-xl bg-[#12141A] border border-[#2A2D34]">
+        <button
+          id="btn-show-graphs"
+          type="button"
+          class="px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all bg-[#7C3AED] text-white shadow-[0_0_12px_rgba(124,58,237,0.4)]"
+        >
+          📊 Visual Benchmark Graphs
+        </button>
+        <button
+          id="btn-show-matrix"
+          type="button"
+          class="px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white"
+        >
+          📋 Full Specification Matrix
+        </button>
+      </div>
+    </div>
+
+    <!-- VIEW A: VISUAL BENCHMARK GRAPHS -->
+    <div id="container-graphs" class="grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-300">
+      
+      <!-- GRAPH 1: In-Game FPS Drop (Lower is better) -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold font-mono text-white uppercase tracking-wider">In-Game FPS Impact During Combat</h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-[#00D48F] font-bold">LOWER IS BETTER</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-6">Percentage of frames lost during intense 5v5 Viper's Pit and Brimstone execute teamfights.</p>
+
+          <!-- Bars -->
+          <div class="space-y-4 font-mono text-xs">
+            <!-- Eclipse -->
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="font-bold text-white flex items-center gap-1.5">
+                  <span class="size-2 rounded-full bg-[#00D48F]"></span>
+                  <span>ECLIPSE (DirectX 11 DXGI)</span>
+                </span>
+                <span class="font-black text-[#00D48F]">0.0% Drop (0 FPS Loss)</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-gradient-to-r from-[#00D48F] to-[#38BDF8] rounded-full w-[2%] bar-shimmer"></div>
+              </div>
+            </div>
+
+            <!-- ShadowPlay -->
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>GeForce ShadowPlay</span>
+                <span>2.1% Drop (~5-8 FPS)</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-slate-500 rounded-full w-[16%]"></div>
+              </div>
+            </div>
+
+            <!-- Medal.tv -->
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Medal.tv (Chromium Framework)</span>
+                <span class="text-red-400 font-bold">8.4% Drop (~22-30 FPS)</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-500/80 rounded-full w-[56%]"></div>
+              </div>
+            </div>
+
+            <!-- Outplayed -->
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Outplayed (Overwolf Overlay Engine)</span>
+                <span class="text-red-400 font-bold">14.2% Drop (~40+ FPS)</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-600 rounded-full w-[88%]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-[#2A2D34] text-[11px] font-mono text-slate-400">
+          💡 <strong class="text-white">Why:</strong> Eclipse duplicates desktop framebuffers straight inside GPU VRAM, completely bypassing the CPU and PCIe bus.
+        </div>
+      </div>
+
+      <!-- GRAPH 2: RAM Memory Consumption (Lower is better) -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold font-mono text-white uppercase tracking-wider">RAM Memory Footprint (Active Replay)</h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-[#00D48F] font-bold">LOWER IS BETTER</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-6">Total memory reserved while silently running in the background awaiting hotkey or kill trigger.</p>
+
+          <!-- Bars -->
+          <div class="space-y-4 font-mono text-xs">
+            <!-- Eclipse -->
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="font-bold text-white flex items-center gap-1.5">
+                  <span class="size-2 rounded-full bg-[#00D48F]"></span>
+                  <span>ECLIPSE (Circular NVMe Ring Buffer)</span>
+                </span>
+                <span class="font-black text-[#00D48F]">14 MB RAM</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-gradient-to-r from-[#00D48F] to-[#38BDF8] rounded-full w-[3%] bar-shimmer"></div>
+              </div>
+            </div>
+
+            <!-- ShadowPlay -->
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>GeForce ShadowPlay</span>
+                <span>240 MB</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-slate-500 rounded-full w-[22%]"></div>
+              </div>
+            </div>
+
+            <!-- Medal.tv -->
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Medal.tv (Recorder + Social Feed)</span>
+                <span class="text-red-400 font-bold">950 MB</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-500/80 rounded-full w-[68%]"></div>
+              </div>
+            </div>
+
+            <!-- Outplayed -->
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Outplayed (Overwolf Heavy Engine)</span>
+                <span class="text-red-400 font-bold">1,380 MB (1.38 GB)</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-600 rounded-full w-[95%]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-[#2A2D34] text-[11px] font-mono text-slate-400">
+          💡 <strong class="text-white">Why:</strong> Eclipse segments rolling 2-second buffer files to NVMe temp storage, preventing massive video RAM bloating.
+        </div>
+      </div>
+
+      <!-- GRAPH 3: Input Lag & Frame Pacing Overhead -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold font-mono text-white uppercase tracking-wider">Input Latency / Frametime Jitter Added</h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-[#00D48F] font-bold">LOWER IS BETTER</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-6">Added frame delivery delay between mouse movement and monitor photon output.</p>
+
+          <div class="space-y-4 font-mono text-xs">
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="font-bold text-white flex items-center gap-1.5">
+                  <span class="size-2 rounded-full bg-[#00D48F]"></span>
+                  <span>ECLIPSE (Zero-Copy Non-Invasive)</span>
+                </span>
+                <span class="font-black text-[#00D48F]">0.08 ms (Imperceptible)</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-gradient-to-r from-[#00D48F] to-[#38BDF8] rounded-full w-[4%] bar-shimmer"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>GeForce ShadowPlay</span>
+                <span>0.38 ms</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-slate-500 rounded-full w-[14%]"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Medal.tv Hook Pipeline</span>
+                <span class="text-red-400 font-bold">3.80 ms</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-500/80 rounded-full w-[65%]"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Outplayed Overwolf Overlay</span>
+                <span class="text-red-400 font-bold">5.40 ms</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-600 rounded-full w-[92%]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-[#2A2D34] text-[11px] font-mono text-slate-400">
+          💡 <strong class="text-white">Why:</strong> Zero DLL injection means the Direct3D presentation queue is never interrupted or hooked.
+        </div>
+      </div>
+
+      <!-- GRAPH 4: Cold Startup & Standby CPU -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold font-mono text-white uppercase tracking-wider">Cold Launch Time to Standby</h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-[#00D48F] font-bold">LOWER IS BETTER</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-6">Time from clicking executable until ready to capture gameplay in memory.</p>
+
+          <div class="space-y-4 font-mono text-xs">
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="font-bold text-white flex items-center gap-1.5">
+                  <span class="size-2 rounded-full bg-[#00D48F]"></span>
+                  <span>ECLIPSE (Native Rust Binary)</span>
+                </span>
+                <span class="font-black text-[#00D48F]">0.25 Seconds</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-gradient-to-r from-[#00D48F] to-[#38BDF8] rounded-full w-[5%] bar-shimmer"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>GeForce ShadowPlay</span>
+                <span>1.80 Seconds</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-slate-500 rounded-full w-[25%]"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Medal.tv (Node + Electron Webview)</span>
+                <span class="text-red-400 font-bold">5.20 Seconds</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-500/80 rounded-full w-[72%]"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1 text-slate-300">
+                <span>Outplayed (Overwolf Host Services)</span>
+                <span class="text-red-400 font-bold">7.10 Seconds</span>
+              </div>
+              <div class="w-full h-3 bg-[#0A0B0E] rounded-full overflow-hidden p-0.5 border border-[#2A2D34]">
+                <div class="h-full bg-red-600 rounded-full w-[96%]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-[#2A2D34] text-[11px] font-mono text-slate-400">
+          💡 <strong class="text-white">Why:</strong> Native Windows binary with no embedded Chromium engine or ad telemetry servers to initialize.
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW B: FULL TECHNICAL SPECIFICATION MATRIX (Hidden by default, toggleable) -->
+    <div id="container-matrix" class="hidden w-full overflow-x-auto rounded-2xl border border-[#2A2D34] shadow-[0_16px_50px_rgba(0,0,0,0.8)] glass-panel transition-all duration-300">
+      <table class="w-full text-left text-xs font-mono border-collapse min-w-[700px]">
+        <thead>
+          <tr class="bg-[#0A0B0E] border-b border-[#2A2D34] text-slate-400">
+            <th class="p-4 uppercase tracking-wider font-bold">Feature / Architectural Dimension</th>
+            <th class="p-4 bg-[#7C3AED]/25 text-[#C084FC] font-black uppercase text-sm border-x border-[#9333EA]/40">
+              ⚡ ECLIPSE
+            </th>
+            <th class="p-4 font-bold">Medal.tv</th>
+            <th class="p-4 font-bold">Outplayed (Overwolf)</th>
+            <th class="p-4 font-bold">GeForce ShadowPlay</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2A2D34]/70">
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">In-Game FPS Impact</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">0 FPS Drop (&lt;1% CPU)</td>
+            <td class="p-4 text-red-400">5% – 12% Drop</td>
+            <td class="p-4 text-red-400">8% – 15% Drop</td>
+            <td class="p-4 text-emerald-400">1% – 3% Drop</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">RAM Memory Consumption</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">&lt; 16 MB Buffer Mode</td>
+            <td class="p-4 text-red-400">850 MB – 1.4 GB</td>
+            <td class="p-4 text-red-400">1.2 GB+ (Overwolf Engine)</td>
+            <td class="p-4 text-slate-300">~250 MB</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">Automated Combat Kill Markers</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">✓ Native ShooterGame.log</td>
+            <td class="p-4 text-yellow-400">Partial / Cloud Delay</td>
+            <td class="p-4 text-slate-300">✓ Overwolf Provider</td>
+            <td class="p-4 text-red-400">✗ None (Manual Only)</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">Private Screen Leakage Guard</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">✓ Valorant Window-Only</td>
+            <td class="p-4 text-red-400">✗ Records Desktop if tabbed</td>
+            <td class="p-4 text-slate-300">✓ Game Capture</td>
+            <td class="p-4 text-red-400">✗ Full Monitor Desktop</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">Riot Vanguard Compliance</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">100% User-Mode (Zero Hooks)</td>
+            <td class="p-4 text-yellow-400">Hook Interception Issues</td>
+            <td class="p-4 text-yellow-400">Heavy Hooked Overlay</td>
+            <td class="p-4 text-emerald-400">Clean Driver Mode</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">Ads &amp; Data Telemetry Selling</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">0 Ads • 100% Local Privacy</td>
+            <td class="p-4 text-red-400">Social Ads &amp; Tracking</td>
+            <td class="p-4 text-red-400">Embedded Video Ads</td>
+            <td class="p-4 text-slate-400">Nvidia Account Required</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">Cryptographically Signed Updates</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">✓ Ed25519 Minisign Verified</td>
+            <td class="p-4 text-slate-400">Standard HTTPS</td>
+            <td class="p-4 text-slate-400">Standard Overwolf</td>
+            <td class="p-4 text-slate-400">Nvidia Server</td>
+          </tr>
+          <tr class="hover:bg-[#12141A]/50 transition-colors">
+            <td class="p-4 text-white font-bold">License &amp; Cost</td>
+            <td class="p-4 bg-[#7C3AED]/10 font-bold text-[#00D48F] border-x border-[#9333EA]/30">100% Free To Use</td>
+            <td class="p-4 text-slate-300">Freemium (Paid Premium)</td>
+            <td class="p-4 text-slate-300">Ad-Supported</td>
+            <td class="p-4 text-slate-300">Free (Hardware-locked)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE & DEEP DIVE CARDS ("ENGINEERED FOR PURE PERFORMANCE") -->
+  <section id="architecture" class="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center max-w-3xl mx-auto mb-14">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7C3AED]/20 text-[#C084FC] border border-[#9333EA]/40 text-xs font-mono font-bold uppercase tracking-wider mb-2">
+        <span class="size-2 rounded-full bg-[#7C3AED] animate-ping"></span>
+        <span>Low-Level Systems Architecture</span>
+      </div>
+      <h2 class="text-3xl sm:text-5xl font-extrabold text-white mt-2 font-mono">Engineered For Pure Performance</h2>
+      <p class="text-sm text-slate-400 mt-2">Zero shortcuts. Built from the bare hardware up to ensure esports tournament grade stability.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Card 1: DirectX 11 DXGI Pipeline -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-8 -top-8 size-28 bg-[#7C3AED]/10 rounded-full blur-2xl group-hover:bg-[#7C3AED]/25 transition-all"></div>
+        <div>
+          <!-- Top Icon & Tag -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="size-12 rounded-xl bg-[#7C3AED]/20 border border-[#9333EA]/50 flex items-center justify-center text-[#C084FC] shadow-[0_0_15px_rgba(147,51,234,0.3)]">
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#7C3AED]/20 text-[#C084FC] font-bold border border-[#9333EA]/40">ZERO COPY</span>
+          </div>
+
+          <h3 class="text-base font-bold text-white font-mono">DirectX 11 DXGI Pipeline</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            Direct GPU VRAM frame duplication via Microsoft Desktop Duplication API. Eliminates PCIe and system RAM transfers so your CPU stays 100% focused on Valorant's game tick loop.
+          </p>
+
+          <!-- Animated Micro Schematic -->
+          <div class="mt-4 p-2.5 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] flex items-center justify-between font-mono text-[10px]">
+            <span class="text-[#38BDF8]">VRAM Frame</span>
+            <span class="text-slate-500 animate-pulse">➔➔ (0ms) ➔➔</span>
+            <span class="text-[#00D48F]">NVENC H.264</span>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-3 border-t border-[#2A2D34] flex items-center justify-between text-[10px] font-mono">
+          <span class="text-slate-400">Supported</span>
+          <span class="text-[#00D48F] font-bold">NVENC / AMF / QSV</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Vanguard-Safe Log Tailer -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-8 -top-8 size-28 bg-[#00D48F]/10 rounded-full blur-2xl group-hover:bg-[#00D48F]/25 transition-all"></div>
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="size-12 rounded-xl bg-[#00D48F]/20 border border-[#00D48F]/50 flex items-center justify-center text-[#00D48F] shadow-[0_0_15px_rgba(0,212,143,0.3)]">
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#00D48F]/20 text-[#00D48F] font-bold border border-[#00D48F]/40">ZERO HOOKS</span>
+          </div>
+
+          <h3 class="text-base font-bold text-white font-mono">Vanguard-Safe Log Tailer</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            Zero DLL injections and zero memory tampering. Kills, headshots, and rounds are read from Valorant's sanctioned local disk logs using sanitized read-only file handles.
+          </p>
+
+          <!-- Animated Micro Schematic -->
+          <div class="mt-4 p-2.5 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] flex items-center justify-between font-mono text-[10px]">
+            <span class="text-slate-400 truncate">ShooterGame.log</span>
+            <span class="text-[#00D48F] font-bold">FILE_SHARE_READ</span>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-3 border-t border-[#2A2D34] flex items-center justify-between text-[10px] font-mono">
+          <span class="text-slate-400">Anti-Cheat Safety</span>
+          <span class="text-[#00D48F] font-bold">100% USER-MODE</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Circular NVMe Spooler -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-8 -top-8 size-28 bg-[#38BDF8]/10 rounded-full blur-2xl group-hover:bg-[#38BDF8]/25 transition-all"></div>
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="size-12 rounded-xl bg-[#38BDF8]/20 border border-[#38BDF8]/50 flex items-center justify-center text-[#38BDF8] shadow-[0_0_15px_rgba(56,189,248,0.3)]">
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] font-bold border border-[#38BDF8]/40">&lt; 16 MB HEAP</span>
+          </div>
+
+          <h3 class="text-base font-bold text-white font-mono">Circular NVMe Spooler</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            Rolling 2-second segmented buffer slices keep video memory heap footprint tiny (&lt;16MB RAM). Expired footage is recycled on high-speed NVMe flash without stutter.
+          </p>
+
+          <!-- Animated Micro Schematic -->
+          <div class="mt-4 p-2.5 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] flex items-center justify-between font-mono text-[10px]">
+            <span class="text-slate-400">Ring Segments</span>
+            <span class="text-[#38BDF8] font-bold">15x 2.0s Slices</span>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-3 border-t border-[#2A2D34] flex items-center justify-between text-[10px] font-mono">
+          <span class="text-slate-400">Spool Storage</span>
+          <span class="text-[#00D48F] font-bold">FAST NVMe RECYCLE</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Ed25519 Minisign Updates -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-8 -top-8 size-28 bg-[#F6F740]/10 rounded-full blur-2xl group-hover:bg-[#F6F740]/25 transition-all"></div>
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="size-12 rounded-xl bg-[#F6F740]/20 border border-[#F6F740]/50 flex items-center justify-center text-[#F6F740] shadow-[0_0_15px_rgba(246,247,64,0.3)]">
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#F6F740]/20 text-[#F6F740] font-bold border border-[#F6F740]/40">ENCRYPTED</span>
+          </div>
+
+          <h3 class="text-base font-bold text-white font-mono">Ed25519 Minisign Updates</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            In-app updater verified by asymmetric cryptographic signatures. Only builds mathematically signed with the author's private key can execute.
+          </p>
+
+          <!-- Animated Micro Schematic -->
+          <div class="mt-4 p-2.5 rounded-lg bg-[#0A0B0E] border border-[#2A2D34] flex items-center justify-between font-mono text-[10px]">
+            <span class="text-slate-400">Pubkey Fingerprint</span>
+            <span class="text-[#F6F740] font-bold">RWTU7z...</span>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-3 border-t border-[#2A2D34] flex items-center justify-between text-[10px] font-mono">
+          <span class="text-slate-400">Security Guard</span>
+          <span class="text-[#00D48F] font-bold">TAMPER-PROOF</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIOT DISCLAIMER & COMPLIANCE -->
+  <section id="vanguard" class="relative z-10 py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+    <div class="rounded-2xl bg-[#0A0B0E] border border-[#2A2D34] p-6 shadow-xl space-y-4">
+      <div class="flex items-center gap-2.5">
+        <div class="size-6 rounded-lg bg-[#00D48F]/20 border border-[#00D48F]/40 flex items-center justify-center text-[#00D48F]">
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h4 class="text-xs font-mono font-bold text-white uppercase tracking-wider">Riot Games Third-Party Policy &amp; Legal Compliance</h4>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        <strong>Eclipse</strong> isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
+      </p>
+      <p class="text-[11px] font-mono text-slate-500">
+        Architecture Integrity: Eclipse does not read/write game process memory, does not inject DLLs, and does not provide unfair tactical combat advantages.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="relative z-10 py-10 border-t border-[#2A2D34] bg-[#07080B] text-xs font-mono text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-white">ECLIPSE v0.1.1</span>
+        <span>•</span>
+        <span>Created by <a href="https://github.com/Skywalkie-cyber" target="_blank" rel="noopener noreferrer" class="text-[#C084FC] hover:underline">Skywalkie-cyber</a></span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine" class="hover:text-white transition-colors">GitHub Repository</a>
+        <a href="https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases" class="hover:text-white transition-colors">Releases</a>
+        <a href="#vanguard" class="hover:text-white transition-colors">Privacy &amp; Compliance</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- SCRIPT LOGIC (Interactive Background, Video Player, Tabs, Simulator & Benchmarks) -->
+  <script>
+    // --- 1. Dynamic Cursor-Responsive Cyber Particle & Gravitational Mesh ---
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    const spotlight = document.getElementById('cursor-spotlight');
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const particles = [];
+    const particleCount = Math.min(65, Math.floor(window.innerWidth / 22));
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        radius: Math.random() * 1.6 + 0.8,
+        baseColor: Math.random() > 0.4 ? '#9333EA' : (Math.random() > 0.5 ? '#38BDF8' : '#00D48F'),
+      });
+    }
+
+    let mouse = { x: width / 2, y: height / 2, targetX: width / 2, targetY: height / 2, active: false };
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.targetX = e.clientX;
+      mouse.targetY = e.clientY;
+      mouse.active = true;
+    });
+
+    function renderCyberCanvas() {
+      // Smooth lerp mouse coordinates
+      mouse.x += (mouse.targetX - mouse.x) * 0.08;
+      mouse.y += (mouse.targetY - mouse.y) * 0.08;
+
+      if (spotlight) {
+        spotlight.style.transform = `translate(${mouse.x}px, ${mouse.y}px) translate(-50%, -50%)`;
+      }
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw and connect particles
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+
+        // Cursor gravitational attraction & repulsion
+        const dx = mouse.x - p1.x;
+        const dy = mouse.y - p1.y;
+        const distToMouse = Math.hypot(dx, dy);
+
+        if (distToMouse < 180 && mouse.active) {
+          const force = (180 - distToMouse) / 180;
+          p1.x -= (dx / distToMouse) * force * 1.5;
+          p1.y -= (dy / distToMouse) * force * 1.5;
+        }
+
+        p1.x += p1.vx;
+        p1.y += p1.vy;
+
+        if (p1.x < 0) p1.x = width;
+        if (p1.x > width) p1.x = 0;
+        if (p1.y < 0) p1.y = height;
+        if (p1.y > height) p1.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p1.baseColor;
+        ctx.fill();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+          if (dist < 135) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            const alpha = 0.22 * (1 - dist / 135);
+            ctx.strokeStyle = `rgba(147, 51, 234, ${alpha})`;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(renderCyberCanvas);
+    }
+    renderCyberCanvas();
+
+    // --- 2. Real HTML5 Video Player & Scrubber Logic ---
+    const video = document.getElementById('demo-video-player');
+    const playBtn = document.getElementById('btn-play-pause');
+    const ctrlPlayIcon = document.getElementById('ctrl-play-icon');
+    const ctrlPauseIcon = document.getElementById('ctrl-pause-icon');
+    const centerOverlay = document.getElementById('center-play-overlay');
+    const centerPlayIcon = document.getElementById('center-play-icon');
+    const centerPauseIcon = document.getElementById('center-pause-icon');
+    const timecode = document.getElementById('demo-timecode');
+    const progress = document.getElementById('timeline-progress');
+    const playhead = document.getElementById('timeline-playhead');
+    const track = document.getElementById('timeline-track');
+    const killPopup = document.getElementById('kill-popup');
+    const killBannerText = document.getElementById('kill-banner-text');
+
+    function formatTime(s) {
+      if (isNaN(s)) return '00:00';
+      const mins = Math.floor(s / 60);
+      const secs = Math.floor(s % 60);
+      return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function syncPlayState(playing) {
+      if (playing) {
+        ctrlPlayIcon.classList.add('hidden');
+        ctrlPauseIcon.classList.remove('hidden');
+        centerPlayIcon.classList.add('hidden');
+        centerPauseIcon.classList.remove('hidden');
+        centerOverlay.style.opacity = '0';
+      } else {
+        ctrlPlayIcon.classList.remove('hidden');
+        ctrlPauseIcon.classList.add('hidden');
+        centerPlayIcon.classList.remove('hidden');
+        centerPauseIcon.classList.add('hidden');
+        centerOverlay.style.opacity = '1';
+      }
+    }
+
+    function toggleVideoPlay() {
+      if (video.paused || video.ended) {
+        video.play().catch(e => console.log('Autoplay policy notice:', e));
+      } else {
+        video.pause();
+      }
+    }
+
+    playBtn.addEventListener('click', toggleVideoPlay);
+    centerOverlay.addEventListener('click', toggleVideoPlay);
+    video.addEventListener('click', toggleVideoPlay);
+
+    video.addEventListener('play', () => syncPlayState(true));
+    video.addEventListener('pause', () => syncPlayState(false));
+
+    video.addEventListener('timeupdate', () => {
+      const cur = video.currentTime;
+      const dur = video.duration || 30;
+      const pct = (cur / dur) * 100;
+      progress.style.width = pct + '%';
+      playhead.style.left = pct + '%';
+      timecode.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+    });
+
+    // Scrubber click / drag
+    track.addEventListener('click', (e) => {
+      const rect = track.getBoundingClientRect();
+      const pos = (e.clientX - rect.left) / rect.width;
+      const targetTime = pos * (video.duration || 30);
+      video.currentTime = targetTime;
+    });
+
+    // Marker clicks
+    document.querySelectorAll('.marker').forEach(m => {
+      m.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sec = parseFloat(m.getAttribute('data-seek'));
+        video.currentTime = sec;
+        killBannerText.textContent = m.getAttribute('title');
+        killPopup.style.opacity = '1';
+        setTimeout(() => { killPopup.style.opacity = '0'; }, 2000);
+      });
+    });
+
+    // Skip backward / forward
+    document.getElementById('btn-rewind').addEventListener('click', () => {
+      video.currentTime = Math.max(0, video.currentTime - 5);
+    });
+    document.getElementById('btn-forward').addEventListener('click', () => {
+      video.currentTime = Math.min(video.duration || 30, video.currentTime + 5);
+    });
+
+    // Playback Speed
+    document.getElementById('speed-select').addEventListener('change', (e) => {
+      video.playbackRate = parseFloat(e.target.value);
+    });
+
+    // Volume / Mute
+    const muteBtn = document.getElementById('btn-mute');
+    muteBtn.addEventListener('click', () => {
+      video.muted = !video.muted;
+      muteBtn.style.color = video.muted ? '#EF4444' : '#FFFFFF';
+    });
+
+    // Spacebar shortcut
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        toggleVideoPlay();
+      }
+    });
+
+    // --- 3. Desktop Application Tab Switcher (Studio vs Settings) ---
+    const tabStudio = document.getElementById('tab-btn-studio');
+    const tabSettings = document.getElementById('tab-btn-settings');
+    const viewStudio = document.getElementById('view-studio');
+    const viewSettings = document.getElementById('view-settings');
+
+    tabStudio.addEventListener('click', () => {
+      viewStudio.classList.remove('hidden');
+      viewStudio.classList.add('flex');
+      viewSettings.classList.add('hidden');
+      viewSettings.classList.remove('flex');
+
+      tabStudio.className = 'px-3 py-1 rounded-md text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all bg-[#7C3AED] text-white shadow-sm border border-[#9333EA]/60 shadow-[0_0_12px_rgba(124,58,237,0.4)]';
+      tabSettings.className = 'px-3 py-1 rounded-md text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all text-slate-400 hover:text-white hover:bg-[#1A1D24]';
+    });
+
+    tabSettings.addEventListener('click', () => {
+      viewSettings.classList.remove('hidden');
+      viewSettings.classList.add('flex');
+      viewStudio.classList.add('hidden');
+      viewStudio.classList.remove('flex');
+
+      tabSettings.className = 'px-3 py-1 rounded-md text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all bg-[#7C3AED] text-white shadow-sm border border-[#9333EA]/60 shadow-[0_0_12px_rgba(124,58,237,0.4)]';
+      tabStudio.className = 'px-3 py-1 rounded-md text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all text-slate-400 hover:text-white hover:bg-[#1A1D24]';
+    });
+
+    // --- 4. Interactive Simulation Toast Notifications ---
+    const toast = document.getElementById('sim-toast');
+    const toastText = document.getElementById('sim-toast-text');
+
+    function showToast(msg) {
+      toastText.textContent = msg;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 3500);
+    }
+
+    document.getElementById('btn-export-clip').addEventListener('click', () => {
+      showToast('✓ Clip exported to C:\\Users\\...\\Videos\\ValorantClips (15.2 MB in 0.38s)');
+    });
+    document.getElementById('btn-share-modal').addEventListener('click', () => {
+      showToast('✓ Direct clip link copied to clipboard for Discord sharing!');
+    });
+    document.getElementById('btn-sync-events').addEventListener('click', () => {
+      showToast('✓ Synchronized 4 combat events from ShooterGame.log');
+    });
+    document.getElementById('btn-tray-mode').addEventListener('click', () => {
+      showToast('✓ Eclipse minimized to system tray (<16MB RAM active)');
+    });
+
+    // --- 5. F8 In-Game HUD Simulation & Acoustic Chime ---
+    const simulateF8Btn = document.getElementById('simulate-f8-btn');
+    const hudCard = document.getElementById('hud-overlay-card');
+
+    function playAcousticChime() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const actx = new AudioContext();
+        const now = actx.currentTime;
+
+        const osc1 = actx.createOscillator();
+        const osc2 = actx.createOscillator();
+        const gain = actx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(587.33, now);
+        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(880, now);
+        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.25);
+
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(actx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.8);
+        osc2.stop(now + 0.8);
+      } catch (e) {
+        console.warn('AudioContext notice:', e);
+      }
+    }
+
+    simulateF8Btn.addEventListener('click', () => {
+      playAcousticChime();
+      hudCard.classList.remove('-translate-x-[125%]', 'opacity-0');
+      hudCard.classList.add('translate-x-0', 'opacity-100');
+      setTimeout(() => {
+        hudCard.classList.add('-translate-x-[125%]', 'opacity-0');
+        hudCard.classList.remove('translate-x-0', 'opacity-100');
+      }, 3200);
+    });
+
+    // --- 6. Benchmark Graphs vs Technical Matrix Toggle ---
+    const btnGraphs = document.getElementById('btn-show-graphs');
+    const btnMatrix = document.getElementById('btn-show-matrix');
+    const containerGraphs = document.getElementById('container-graphs');
+    const containerMatrix = document.getElementById('container-matrix');
+
+    btnGraphs.addEventListener('click', () => {
+      containerGraphs.classList.remove('hidden');
+      containerGraphs.classList.add('grid');
+      containerMatrix.classList.add('hidden');
+      btnGraphs.className = 'px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all bg-[#7C3AED] text-white shadow-[0_0_12px_rgba(124,58,237,0.4)]';
+      btnMatrix.className = 'px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white';
+    });
+
+    btnMatrix.addEventListener('click', () => {
+      containerMatrix.classList.remove('hidden');
+      containerGraphs.classList.add('hidden');
+      containerGraphs.classList.remove('grid');
+      btnMatrix.className = 'px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all bg-[#7C3AED] text-white shadow-[0_0_12px_rgba(124,58,237,0.4)]';
+      btnGraphs.className = 'px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white';
+    });
+  </script>
+</body>
+</html>
