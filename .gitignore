@@ -22,6 +22,7 @@ src-tauri/eclipse-updater.key
 # Compiled Binary Installers (Upload these to GitHub Releases, not git repo)
 *.exe
 *.msi
+release-artifacts*/
 
 # System & OS artifacts
 .DS_Store

@@ -1,10 +1,10 @@
 {
   "version": "0.1.1",
-  "notes": "Eclipse v0.1.1: Added full custom hotkey combinations support for manual clipping, mark in, mark out, and playback, and fixed the rolling buffer duration slider alignment.",
+  "notes": "Eclipse v0.1.1: Custom key combinations for all hotkeys and fixed rolling buffer duration slider alignment.",
   "pub_date": "2026-11-11T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWmpzdmszcnVwYWtjRSs2dW44OXU4UTFPM04zMDFRNzlqYWg1RWFYVkZWS1JTWnQ3WU9waW9CbWcrcEVlUWYrR1FPOEUwdmVzZ2daNVMzZCt5ZjgrQndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0Mzk4MjIwCWZpbGU6RWNsaXBzZV8wLjEuMV94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjEKcThXZ2xqTzdETW1iSFdhNE4xNE1kYm5Cakp3UGZDb3BBVWhFdS9qbU9GZzRKdmJEdWI0S3drRFZZaUpSVEtWTWVtNTBhL3RUbzJRQWFDZkNucWwzQVE9PQo=",
       "url": "https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases/download/v0.1.1/Eclipse-Setup.exe"
     }
   }
