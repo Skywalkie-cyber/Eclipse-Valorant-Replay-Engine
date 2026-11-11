@@ -6,6 +6,10 @@
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWmpzdmszcnVwYWtjRSs2dW44OXU4UTFPM04zMDFRNzlqYWg1RWFYVkZWS1JTWnQ3WU9waW9CbWcrcEVlUWYrR1FPOEUwdmVzZ2daNVMzZCt5ZjgrQndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0Mzk4MjIwCWZpbGU6RWNsaXBzZV8wLjEuMV94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjEKcThXZ2xqTzdETW1iSFdhNE4xNE1kYm5Cakp3UGZDb3BBVWhFdS9qbU9GZzRKdmJEdWI0S3drRFZZaUpSVEtWTWVtNTBhL3RUbzJRQWFDZkNucWwzQVE9PQo=",
       "url": "https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases/download/v0.1.1/Eclipse-Setup.exe"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWmpzdmszcnVwYWtjRSs2dW44OXU4UTFPM04zMDFRNzlqYWg1RWFYVkZWS1JTWnQ3WU9waW9CbWcrcEVlUWYrR1FPOEUwdmVzZ2daNVMzZCt5ZjgrQndrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0Mzk4MjIwCWZpbGU6RWNsaXBzZV8wLjEuMV94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjEKcThXZ2xqTzdETW1iSFdhNE4xNE1kYm5Cakp3UGZDb3BBVWhFdS9qbU9GZzRKdmJEdWI0S3drRFZZaUpSVEtWTWVtNTBhL3RUbzJRQWFDZkNucWwzQVE9PQo=",
+      "url": "https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases/download/v0.1.1/Eclipse-Setup.exe"
     }
   }
 }
