@@ -63,7 +63,7 @@ fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
 #[tauri::command]
 fn update_config(new_config: AppConfig, state: State<'_, AppState>) -> Result<(), String> {
     state.config_manager.update(new_config.clone())?;
-    state.hotkey_manager.set_key(new_config.hotkey_vk_code);
+    state.hotkey_manager.set_key_with_modifiers(new_config.hotkey_vk_code, new_config.hotkey_modifiers);
     Ok(())
 }
 
@@ -922,7 +922,7 @@ fn main() {
 
     // 2. Setup Global Hotkey (Non-blocking WH_KEYBOARD_LL)
     let (hotkey_tx, mut hotkey_rx) = unbounded_channel();
-    let hotkey_manager = HotkeyManager::new(hotkey_tx, current_config.hotkey_vk_code);
+    let hotkey_manager = HotkeyManager::new(hotkey_tx, current_config.hotkey_vk_code, current_config.hotkey_modifiers);
     hotkey_manager.start();
 
     // 3. Hotkey Listener Worker (Instant Low-Latency F8 Execution)

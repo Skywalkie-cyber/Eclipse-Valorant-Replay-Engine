@@ -1,12 +1,11 @@
 {
-  "version": "0.1.0",
-  "notes": "Initial public release of Eclipse — zero-latency hardware replay buffer, automated killfeed combat markers, and Vanguard-safe architecture.",
-  "pub_date": "2026-11-10T19:08:36Z",
+  "version": "0.1.1",
+  "notes": "Eclipse v0.1.1: Added full custom hotkey combinations support for manual clipping, mark in, mark out, and playback, and fixed the rolling buffer duration slider alignment.",
+  "pub_date": "2026-11-11T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnFmdzZTL1lWUG1kVmc0SkxMY0NmQnNTMmdsdnFIV1lMT2dsdnlWWldiblhINHE3eng3MFgrdllSdHdFVzFzTDgwN3ZrUkFyRXo3THVzRWRPdDVmYmdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0MzE3OTE2CWZpbGU6RWNsaXBzZV8wLjEuMF94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjAKdElhZEZiRUVmalhYdmtuWHJianV4TXc3NVh2Y1RKVnhsdUFvV2VkcTcrbzdJaFlRREw2YXM0MjhseTVGeDBORXEwQ2JJOW9pS2NuQUJNcmlyTUtYQkE9PQo=",
-      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.0/Eclipse-Setup.exe"
+      "signature": "",
+      "url": "https://github.com/Skywalkie-cyber/Eclipse-Valorant-Replay-Engine/releases/download/v0.1.1/Eclipse-Setup.exe"
     }
   }
 }
-

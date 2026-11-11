@@ -96,6 +96,14 @@ pub struct AppConfig {
     pub hotkey_vk_code: u32,         // e.g., 0x77 for VK_F8
     #[serde(default = "default_hotkey_str")]
     pub hotkey_label: String,
+    #[serde(default)]
+    pub hotkey_modifiers: u32,       // 1 = Alt, 2 = Ctrl, 4 = Shift, 8 = Win
+    #[serde(default = "default_mark_in_str")]
+    pub hotkey_mark_in: String,      // Default: "["
+    #[serde(default = "default_mark_out_str")]
+    pub hotkey_mark_out: String,     // Default: "]"
+    #[serde(default = "default_play_pause_str")]
+    pub hotkey_play_pause: String,   // Default: "Space"
     #[serde(default = "default_max_storage")]
     pub max_storage_gb: u32,
     #[serde(default = "default_auto_delete_days")]
@@ -110,6 +118,9 @@ pub struct AppConfig {
 
 fn default_post_roll() -> u32 { 3 }
 fn default_hotkey_str() -> String { "F8".to_string() }
+fn default_mark_in_str() -> String { "[".to_string() }
+fn default_mark_out_str() -> String { "]".to_string() }
+fn default_play_pause_str() -> String { "Space".to_string() }
 fn default_max_storage() -> u32 { 50 }
 fn default_auto_delete_days() -> u32 { 30 }
 
@@ -145,6 +156,10 @@ impl Default for AppConfig {
             clip_save_directory: default_clips,
             hotkey_vk_code: 0x77, // VK_F8
             hotkey_label: "F8".to_string(),
+            hotkey_modifiers: 0,
+            hotkey_mark_in: "[".to_string(),
+            hotkey_mark_out: "]".to_string(),
+            hotkey_play_pause: "Space".to_string(),
             max_storage_gb: 50,
             auto_delete_days: 30,
             low_memory_mode: true,

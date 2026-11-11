@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Release-v0.1.0-8B5CF6?style=for-the-badge&logo=github" alt="Release v0.1.0" />
+  <img src="https://img.shields.io/badge/Release-v0.1.1-8B5CF6?style=for-the-badge&logo=github" alt="Release v0.1.1" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20x64-00D48F?style=for-the-badge&logo=windows" alt="Windows 10/11" />
   <img src="https://img.shields.io/badge/Anti--Cheat-100%25%20Vanguard%20Safe-10B981?style=for-the-badge&logo=shield" alt="Vanguard Safe" />
   <img src="https://img.shields.io/badge/Security-Ed25519%20Minisign-7C3AED?style=for-the-badge&logo=keycdn" alt="Signed Updates" />
@@ -152,6 +152,6 @@ $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content "src-tauri/eclipse-updater.key" -R
 npx tauri build --bundles nsis
 ```
 The compiled installer will be output to:
-`src-tauri/target/release/bundle/nsis/Eclipse_0.1.0_x64-setup.exe`
+`src-tauri/target/release/bundle/nsis/Eclipse_0.1.1_x64-setup.exe`
 
 ---

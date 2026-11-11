@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show, For } from 'solid-js';
+import { createSignal, onMount, onCleanup, Show, For } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { playSoftClipChime } from '../utils/audioChime';
 import { notifyClipTriggered } from './ClipOverlayNotification';
@@ -29,6 +29,10 @@ export interface AppConfig {
   clip_save_directory: string;
   hotkey_vk_code: number;
   hotkey_label: string;
+  hotkey_modifiers?: number;
+  hotkey_mark_in?: string;
+  hotkey_mark_out?: string;
+  hotkey_play_pause?: string;
   max_storage_gb: number;
   auto_delete_days: number;
   low_memory_mode: boolean;
@@ -119,7 +123,202 @@ export function SettingsPanel() {
     } catch (err) {
       console.error('Failed to get config:', err);
     }
+
+    const onKeyDownListener = (e: KeyboardEvent) => {
+      handleGlobalKeyDown(e);
+    };
+    window.addEventListener('keydown', onKeyDownListener, true);
+    onCleanup(() => {
+      window.removeEventListener('keydown', onKeyDownListener, true);
+    });
   });
+
+  const [recordingHotkey, setRecordingHotkey] = createSignal<'manual_clip' | 'mark_in' | 'mark_out' | 'play_pause' | null>(null);
+
+  const parseKeyEvent = (e: KeyboardEvent): { label: string; vkCode: number; modifiers: number } | null => {
+    // Ignore stand-alone modifier key presses so user can press Ctrl then another key
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) {
+      return null;
+    }
+
+    const parts: string[] = [];
+    let modifiers = 0;
+
+    if (e.ctrlKey) {
+      parts.push('Ctrl');
+      modifiers |= 2;
+    }
+    if (e.altKey) {
+      parts.push('Alt');
+      modifiers |= 1;
+    }
+    if (e.shiftKey) {
+      parts.push('Shift');
+      modifiers |= 4;
+    }
+    if (e.metaKey) {
+      parts.push('Win');
+      modifiers |= 8;
+    }
+
+    let keyName = e.key;
+    let vkCode = e.keyCode || e.which || 0x77;
+
+    if (e.code.startsWith('Key')) {
+      keyName = e.code.replace('Key', '').toUpperCase();
+      vkCode = keyName.charCodeAt(0);
+    } else if (e.code.startsWith('Digit')) {
+      keyName = e.code.replace('Digit', '');
+      vkCode = 0x30 + parseInt(keyName, 10);
+    } else if (e.code.startsWith('Numpad')) {
+      keyName = 'Num ' + e.code.replace('Numpad', '');
+    } else if (/^F\d+$/i.test(e.code)) {
+      keyName = e.code.toUpperCase();
+      const fNum = parseInt(keyName.replace('F', ''), 10);
+      vkCode = 0x70 + (fNum - 1);
+    } else if (e.code === 'Space') {
+      keyName = 'Space';
+      vkCode = 0x20;
+    } else if (e.code === 'BracketLeft') {
+      keyName = '[';
+      vkCode = 0xDB;
+    } else if (e.code === 'BracketRight') {
+      keyName = ']';
+      vkCode = 0xDD;
+    } else if (e.code === 'Backslash') {
+      keyName = '\\';
+      vkCode = 0xDC;
+    } else if (e.code === 'Semicolon') {
+      keyName = ';';
+      vkCode = 0xBA;
+    } else if (e.code === 'Quote') {
+      keyName = "'";
+      vkCode = 0xDE;
+    } else if (e.code === 'Comma') {
+      keyName = ',';
+      vkCode = 0xBC;
+    } else if (e.code === 'Period') {
+      keyName = '.';
+      vkCode = 0xBE;
+    } else if (e.code === 'Slash') {
+      keyName = '/';
+      vkCode = 0xBF;
+    } else if (e.code === 'Minus') {
+      keyName = '-';
+      vkCode = 0xBD;
+    } else if (e.code === 'Equal') {
+      keyName = '=';
+      vkCode = 0xBB;
+    } else if (e.code === 'Backquote') {
+      keyName = '`';
+      vkCode = 0xC0;
+    } else if (e.code === 'Tab') {
+      keyName = 'Tab';
+      vkCode = 0x09;
+    } else if (e.code === 'Enter') {
+      keyName = 'Enter';
+      vkCode = 0x0D;
+    } else if (e.code === 'Backspace') {
+      keyName = 'Backspace';
+      vkCode = 0x08;
+    } else if (e.code === 'Insert') {
+      keyName = 'Insert';
+      vkCode = 0x2D;
+    } else if (e.code === 'Delete') {
+      keyName = 'Delete';
+      vkCode = 0x2E;
+    } else if (e.code === 'Home') {
+      keyName = 'Home';
+      vkCode = 0x24;
+    } else if (e.code === 'End') {
+      keyName = 'End';
+      vkCode = 0x23;
+    } else if (e.code === 'PageUp') {
+      keyName = 'PageUp';
+      vkCode = 0x21;
+    } else if (e.code === 'PageDown') {
+      keyName = 'PageDown';
+      vkCode = 0x22;
+    } else {
+      keyName = keyName.length === 1 ? keyName.toUpperCase() : keyName;
+    }
+
+    parts.push(keyName);
+
+    return {
+      label: parts.join(' + '),
+      vkCode,
+      modifiers,
+    };
+  };
+
+  const handleGlobalKeyDown = (e: KeyboardEvent) => {
+    const target = recordingHotkey();
+    if (!target) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.key === 'Escape') {
+      setRecordingHotkey(null);
+      return;
+    }
+
+    const res = parseKeyEvent(e);
+    if (!res) return;
+
+    const cur = config();
+    if (!cur) return;
+
+    const updated = { ...cur };
+    if (target === 'manual_clip') {
+      updated.hotkey_label = res.label;
+      updated.hotkey_vk_code = res.vkCode;
+      updated.hotkey_modifiers = res.modifiers;
+    } else if (target === 'mark_in') {
+      updated.hotkey_mark_in = res.label;
+    } else if (target === 'mark_out') {
+      updated.hotkey_mark_out = res.label;
+    } else if (target === 'play_pause') {
+      updated.hotkey_play_pause = res.label;
+    }
+
+    setConfig(updated);
+    setRecordingHotkey(null);
+
+    invoke('update_config', { newConfig: updated }).catch((err) => console.error('Failed to update config:', err));
+    localStorage.setItem('eclipse_hotkey_mark_in', updated.hotkey_mark_in || '[');
+    localStorage.setItem('eclipse_hotkey_mark_out', updated.hotkey_mark_out || ']');
+    localStorage.setItem('eclipse_hotkey_play_pause', updated.hotkey_play_pause || 'Space');
+    window.dispatchEvent(new CustomEvent('eclipse:hotkeys-updated', { detail: updated }));
+    setSaveStatus(`Saved hotkey: ${res.label}`);
+    setTimeout(() => setSaveStatus(''), 2500);
+  };
+
+  const resetHotkey = (target: 'manual_clip' | 'mark_in' | 'mark_out' | 'play_pause') => {
+    const cur = config();
+    if (!cur) return;
+    const updated = { ...cur };
+    if (target === 'manual_clip') {
+      updated.hotkey_label = 'F8';
+      updated.hotkey_vk_code = 0x77;
+      updated.hotkey_modifiers = 0;
+    } else if (target === 'mark_in') {
+      updated.hotkey_mark_in = '[';
+    } else if (target === 'mark_out') {
+      updated.hotkey_mark_out = ']';
+    } else if (target === 'play_pause') {
+      updated.hotkey_play_pause = 'Space';
+    }
+    setConfig(updated);
+    invoke('update_config', { newConfig: updated }).catch(() => {});
+    localStorage.setItem('eclipse_hotkey_mark_in', updated.hotkey_mark_in || '[');
+    localStorage.setItem('eclipse_hotkey_mark_out', updated.hotkey_mark_out || ']');
+    localStorage.setItem('eclipse_hotkey_play_pause', updated.hotkey_play_pause || 'Space');
+    window.dispatchEvent(new CustomEvent('eclipse:hotkeys-updated', { detail: updated }));
+    setSaveStatus(`Reset hotkey to default!`);
+    setTimeout(() => setSaveStatus(''), 2500);
+  };
 
   const saveSettings = async () => {
     const current = config();
@@ -309,18 +508,54 @@ export function SettingsPanel() {
                   </div>
                   <input
                     type="range"
-                    min="15"
-                    max="120"
-                    step="15"
-                    value={config()!.buffer_length_seconds}
-                    onInput={(e) => setConfig({ ...config()!, buffer_length_seconds: Number(e.currentTarget.value) })}
+                    min="0"
+                    max="3"
+                    step="1"
+                    value={
+                      (() => {
+                        const s = config()!.buffer_length_seconds;
+                        if (s <= 15) return 0;
+                        if (s <= 30) return 1;
+                        if (s <= 60) return 2;
+                        return 3;
+                      })()
+                    }
+                    onInput={(e) => {
+                      const presets = [15, 30, 60, 120];
+                      const val = presets[Number(e.currentTarget.value)] || 30;
+                      setConfig({ ...config()!, buffer_length_seconds: val });
+                    }}
                     className="w-full accent-[#A3A3A3] cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-                    <span>15s (Short Kill)</span>
-                    <span>30s (Default)</span>
-                    <span>60s (Full Round)</span>
-                    <span>120s (Extended Play)</span>
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono select-none">
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config()!, buffer_length_seconds: 15 })}
+                      className={`cursor-pointer transition-colors hover:text-white ${config()!.buffer_length_seconds === 15 ? 'text-white font-bold' : ''}`}
+                    >
+                      15s (Short Kill)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config()!, buffer_length_seconds: 30 })}
+                      className={`cursor-pointer transition-colors hover:text-white ${config()!.buffer_length_seconds === 30 ? 'text-white font-bold' : ''}`}
+                    >
+                      30s (Default)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config()!, buffer_length_seconds: 60 })}
+                      className={`cursor-pointer transition-colors hover:text-white ${config()!.buffer_length_seconds === 60 ? 'text-white font-bold' : ''}`}
+                    >
+                      60s (Full Round)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config()!, buffer_length_seconds: 120 })}
+                      className={`cursor-pointer transition-colors hover:text-white ${config()!.buffer_length_seconds === 120 ? 'text-white font-bold' : ''}`}
+                    >
+                      120s (Extended Play)
+                    </button>
                   </div>
                 </div>
               </div>
@@ -633,67 +868,132 @@ export function SettingsPanel() {
             </div>
 
               <div className="bg-[#0A0A0A]/70 border border-[#262626] rounded-xl p-5 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626]">
+                
+                {/* 1. Manual Clip Hotkey */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626] gap-4">
                   <div>
                     <span className="text-xs font-bold text-white block">Manual Clip Hotkey</span>
                     <span className="text-[11px] text-slate-400">Instantly saves the rolling buffer with all active combat bookmarks.</span>
                   </div>
-                  <select
-                    value={config()!.hotkey_label}
-                    onChange={(e) => {
-                      const val = e.currentTarget.value;
-                      const vkMap: Record<string, number> = {
-                        'F8': 0x77,
-                        'F9': 0x78,
-                        'F10': 0x79,
-                        'F11': 0x7A,
-                        'F7': 0x76,
-                        'F6': 0x75,
-                      };
-                      setConfig({
-                        ...config()!,
-                        hotkey_label: val,
-                        hotkey_vk_code: vkMap[val] || 0x77,
-                      });
-                    }}
-                    className="bg-[#1C1C1C] border border-[#FFFFFF]/50 text-[#FFFFFF] font-mono text-xs font-bold rounded-md px-3 py-1.5 focus:outline-none"
-                  >
-                    <option value="F8">F8 (Recommended)</option>
-                    <option value="F9">F9</option>
-                    <option value="F10">F10</option>
-                    <option value="F11">F11</option>
-                    <option value="F7">F7</option>
-                    <option value="F6">F6</option>
-                  </select>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setRecordingHotkey(recordingHotkey() === 'manual_clip' ? null : 'manual_clip')}
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
+                        recordingHotkey() === 'manual_clip'
+                          ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
+                          : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
+                      }`}
+                      title="Click to rebind to any key or combination"
+                    >
+                      <Show when={recordingHotkey() === 'manual_clip'} fallback={<span>{config()!.hotkey_label || 'F8'}</span>}>
+                        <span>Press keys... (Esc to cancel)</span>
+                      </Show>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => resetHotkey('manual_clip')}
+                      className="px-2 py-1 text-[10px] font-mono text-slate-400 hover:text-white bg-[#141414] hover:bg-[#222222] border border-[#2A2A2A] rounded transition-colors"
+                      title="Reset to default (F8)"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626]">
+                {/* 2. Timeline Mark In (Trim Start) */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626] gap-4">
                   <div>
                     <span className="text-xs font-bold text-white block">Timeline Mark In (Trim Start)</span>
                     <span className="text-[11px] text-slate-400">Sets beginning of trimmed clip at current playhead position.</span>
                   </div>
-                  <div className="px-3 py-1 bg-[#1C1C1C] border border-slate-700 text-slate-200 font-mono text-xs font-bold rounded-md">
-                    [
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setRecordingHotkey(recordingHotkey() === 'mark_in' ? null : 'mark_in')}
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
+                        recordingHotkey() === 'mark_in'
+                          ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
+                          : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
+                      }`}
+                      title="Click to rebind to any key or combination"
+                    >
+                      <Show when={recordingHotkey() === 'mark_in'} fallback={<span>{config()!.hotkey_mark_in || '['}</span>}>
+                        <span>Press keys... (Esc to cancel)</span>
+                      </Show>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => resetHotkey('mark_in')}
+                      className="px-2 py-1 text-[10px] font-mono text-slate-400 hover:text-white bg-[#141414] hover:bg-[#222222] border border-[#2A2A2A] rounded transition-colors"
+                      title="Reset to default ([)"
+                    >
+                      Reset
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626]">
+                {/* 3. Timeline Mark Out (Trim End) */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626] gap-4">
                   <div>
                     <span className="text-xs font-bold text-white block">Timeline Mark Out (Trim End)</span>
                     <span className="text-[11px] text-slate-400">Sets end of trimmed clip at current playhead position.</span>
                   </div>
-                  <div className="px-3 py-1 bg-[#1C1C1C] border border-slate-700 text-slate-200 font-mono text-xs font-bold rounded-md">
-                    ]
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setRecordingHotkey(recordingHotkey() === 'mark_out' ? null : 'mark_out')}
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
+                        recordingHotkey() === 'mark_out'
+                          ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
+                          : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
+                      }`}
+                      title="Click to rebind to any key or combination"
+                    >
+                      <Show when={recordingHotkey() === 'mark_out'} fallback={<span>{config()!.hotkey_mark_out || ']'}</span>}>
+                        <span>Press keys... (Esc to cancel)</span>
+                      </Show>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => resetHotkey('mark_out')}
+                      className="px-2 py-1 text-[10px] font-mono text-slate-400 hover:text-white bg-[#141414] hover:bg-[#222222] border border-[#2A2A2A] rounded transition-colors"
+                      title="Reset to default (])"
+                    >
+                      Reset
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626]">
+                {/* 4. Play / Pause Video */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-[#000000] border border-[#262626] gap-4">
                   <div>
                     <span className="text-xs font-bold text-white block">Play / Pause Video</span>
                     <span className="text-[11px] text-slate-400">Toggle footage playback during review.</span>
                   </div>
-                  <div className="px-3 py-1 bg-[#1C1C1C] border border-slate-700 text-slate-200 font-mono text-xs font-bold rounded-md">
-                    Space
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setRecordingHotkey(recordingHotkey() === 'play_pause' ? null : 'play_pause')}
+                      className={`font-mono text-xs font-bold rounded-md px-3 py-1.5 transition-all flex items-center gap-1.5 ${
+                        recordingHotkey() === 'play_pause'
+                          ? 'bg-[#7C3AED]/30 border-2 border-[#C084FC] text-[#C084FC] animate-pulse shadow-[0_0_12px_rgba(147,51,234,0.5)]'
+                          : 'bg-[#1C1C1C] border border-[#333333] hover:border-[#7C3AED] text-white'
+                      }`}
+                      title="Click to rebind to any key or combination"
+                    >
+                      <Show when={recordingHotkey() === 'play_pause'} fallback={<span>{config()!.hotkey_play_pause || 'Space'}</span>}>
+                        <span>Press keys... (Esc to cancel)</span>
+                      </Show>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => resetHotkey('play_pause')}
+                      className="px-2 py-1 text-[10px] font-mono text-slate-400 hover:text-white bg-[#141414] hover:bg-[#222222] border border-[#2A2A2A] rounded transition-colors"
+                      title="Reset to default (Space)"
+                    >
+                      Reset
+                    </button>
                   </div>
                 </div>
               </div>
@@ -932,7 +1232,7 @@ export function SettingsPanel() {
                   <div className="p-3.5 rounded-lg bg-[#000000] border border-[#262626] flex flex-col justify-between">
                     <span className="text-[10px] font-mono uppercase text-slate-500 font-bold">Current Release</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm font-mono font-bold text-white">v0.1.0</span>
+                      <span className="text-sm font-mono font-bold text-white">v0.1.1</span>
                       <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold uppercase bg-[#10B981]/20 text-[#34D399] border border-[#10B981]/40">
                         Active
                       </span>

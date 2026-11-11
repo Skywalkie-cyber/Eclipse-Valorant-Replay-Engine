@@ -4,7 +4,14 @@ use std::thread;
 use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 use windows_sys::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+    GetAsyncKeyState, RegisterHotKey, UnregisterHotKey,
+    MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN,
+    VK_CONTROL, VK_LCONTROL, VK_RCONTROL,
+    VK_MENU, VK_LMENU, VK_RMENU,
+    VK_SHIFT, VK_LSHIFT, VK_RSHIFT,
+    VK_LWIN, VK_RWIN,
+};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetMessageW, SetWindowsHookExW, TranslateMessage,
     UnhookWindowsHookEx, HHOOK, KBDLLHOOKSTRUCT, MSG, WH_KEYBOARD_LL, WM_HOTKEY, WM_KEYDOWN, WM_SYSKEYDOWN,
@@ -12,6 +19,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 
 static TRIGGER_SENDER: std::sync::OnceLock<UnboundedSender<()>> = std::sync::OnceLock::new();
 static TARGET_KEY: AtomicU32 = AtomicU32::new(0x77); // VK_F8
+static TARGET_MODS: AtomicU32 = AtomicU32::new(0);
 static LAST_TRIGGER_MS: AtomicU32 = AtomicU32::new(0);
 
 const HOTKEY_ID: i32 = 0x0F80;
@@ -22,9 +30,10 @@ pub struct HotkeyManager {
 }
 
 impl HotkeyManager {
-    pub fn new(trigger_tx: UnboundedSender<()>, initial_key: u32) -> Self {
+    pub fn new(trigger_tx: UnboundedSender<()>, initial_key: u32, initial_mods: u32) -> Self {
         let _ = TRIGGER_SENDER.set(trigger_tx);
         TARGET_KEY.store(initial_key, Ordering::Relaxed);
+        TARGET_MODS.store(initial_mods, Ordering::Relaxed);
         Self {
             is_running: Arc::new(AtomicBool::new(false)),
         }
@@ -32,6 +41,11 @@ impl HotkeyManager {
 
     pub fn set_key(&self, vk_code: u32) {
         TARGET_KEY.store(vk_code, Ordering::Relaxed);
+    }
+
+    pub fn set_key_with_modifiers(&self, vk_code: u32, modifiers: u32) {
+        TARGET_KEY.store(vk_code, Ordering::Relaxed);
+        TARGET_MODS.store(modifiers, Ordering::Relaxed);
     }
 
     pub fn start(&self) {
@@ -43,13 +57,14 @@ impl HotkeyManager {
 
         thread::spawn(move || unsafe {
             let target = TARGET_KEY.load(Ordering::Relaxed);
+            let mods = TARGET_MODS.load(Ordering::Relaxed);
 
             // Layer 1: OS-Level Kernel Hotkey Registration (Bypasses UIPI & Fullscreen locks)
-            let reg_ok = RegisterHotKey(0, HOTKEY_ID, MOD_NOREPEAT, target);
+            let reg_ok = RegisterHotKey(0, HOTKEY_ID, MOD_NOREPEAT | mods, target);
             if reg_ok == 0 {
                 println!("[Hotkey Engine] RegisterHotKey fallback to WH_KEYBOARD_LL hook");
             } else {
-                println!("[Hotkey Engine] Kernel RegisterHotKey active for VK 0x{:X}", target);
+                println!("[Hotkey Engine] Kernel RegisterHotKey active for VK 0x{:X} (mods 0x{:X})", target, mods);
             }
 
             // Layer 2: Low-Level Global Keyboard Hook (Direct raw hardware scancode intercept)
@@ -66,7 +81,7 @@ impl HotkeyManager {
                 return;
             }
 
-            println!("[Hotkey Engine] Dual-layer global F8 listener active (Exclusive Fullscreen Safe)");
+            println!("[Hotkey Engine] Dual-layer global hotkey listener active (Exclusive Fullscreen Safe)");
 
             let mut msg: MSG = std::mem::zeroed();
             while is_running.load(Ordering::Relaxed) && GetMessageW(&mut msg, 0, 0, 0) > 0 {
@@ -115,8 +130,28 @@ unsafe extern "system" fn ll_keyboard_proc(
         let target = TARGET_KEY.load(Ordering::Relaxed);
 
         if kbd_struct.vkCode == target {
-            HotkeyManager::dispatch_trigger();
-            return 1; // Consume key event so Windows never beeps or forwards unhandled hotkey
+            let mods = TARGET_MODS.load(Ordering::Relaxed);
+            let ctrl_down = ((GetAsyncKeyState(VK_CONTROL as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_LCONTROL as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_RCONTROL as i32) as u16 & 0x8000) != 0);
+            let alt_down = ((GetAsyncKeyState(VK_MENU as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_LMENU as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_RMENU as i32) as u16 & 0x8000) != 0);
+            let shift_down = ((GetAsyncKeyState(VK_SHIFT as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_LSHIFT as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_RSHIFT as i32) as u16 & 0x8000) != 0);
+            let win_down = ((GetAsyncKeyState(VK_LWIN as i32) as u16 & 0x8000) != 0)
+                || ((GetAsyncKeyState(VK_RWIN as i32) as u16 & 0x8000) != 0);
+
+            let req_alt = (mods & MOD_ALT) != 0;
+            let req_ctrl = (mods & MOD_CONTROL) != 0;
+            let req_shift = (mods & MOD_SHIFT) != 0;
+            let req_win = (mods & MOD_WIN) != 0;
+
+            if ctrl_down == req_ctrl && alt_down == req_alt && shift_down == req_shift && win_down == req_win {
+                HotkeyManager::dispatch_trigger();
+                return 1; // Consume key event so Windows never beeps or forwards unhandled hotkey
+            }
         }
     }
 

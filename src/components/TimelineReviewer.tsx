@@ -57,6 +57,11 @@ export function TimelineReviewer(props?: { onOpenSettings?: () => void }) {
     setTimeout(() => setToastMessage(null), 3800);
   };
 
+  // Customizable hotkeys
+  const [hotkeyMarkIn, setHotkeyMarkIn] = createSignal<string>(localStorage.getItem('eclipse_hotkey_mark_in') || '[');
+  const [hotkeyMarkOut, setHotkeyMarkOut] = createSignal<string>(localStorage.getItem('eclipse_hotkey_mark_out') || ']');
+  const [hotkeyPlayPause, setHotkeyPlayPause] = createSignal<string>(localStorage.getItem('eclipse_hotkey_play_pause') || 'Space');
+
   let videoRef: HTMLVideoElement | undefined;
   let containerRef: HTMLDivElement | undefined;
   let scrubberTrackRef: HTMLDivElement | undefined;
@@ -738,30 +743,78 @@ export function TimelineReviewer(props?: { onOpenSettings?: () => void }) {
     }
   };
 
+  const matchesHotkeyCombo = (e: KeyboardEvent, combo: string): boolean => {
+    if (!combo) return false;
+    const parts = combo.split('+').map((p) => p.trim().toLowerCase());
+    const hasCtrl = parts.includes('ctrl');
+    const hasAlt = parts.includes('alt');
+    const hasShift = parts.includes('shift');
+    const hasWin = parts.includes('win');
+
+    if (e.ctrlKey !== hasCtrl) return false;
+    if (e.altKey !== hasAlt) return false;
+    if (e.shiftKey !== hasShift) return false;
+    if (e.metaKey !== hasWin) return false;
+
+    const keyPart = parts.find((p) => !['ctrl', 'alt', 'shift', 'win'].includes(p)) || '';
+    const pressedKey = (e.key || '').toLowerCase();
+    const pressedCode = (e.code || '').toLowerCase();
+
+    if (keyPart === 'space' && (pressedCode === 'space' || pressedKey === ' ')) return true;
+    if (keyPart === '[' && (pressedKey === '[' || pressedCode === 'bracketleft')) return true;
+    if (keyPart === ']' && (pressedKey === ']' || pressedCode === 'bracketright')) return true;
+    if (keyPart === '\\' && (pressedKey === '\\' || pressedCode === 'backslash')) return true;
+
+    if (pressedKey === keyPart) return true;
+    if (pressedCode === keyPart || pressedCode === 'key' + keyPart || pressedCode === 'digit' + keyPart) return true;
+
+    return false;
+  };
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-    if (e.code === 'Space') {
+    if (matchesHotkeyCombo(e, hotkeyPlayPause())) {
       e.preventDefault();
       togglePlay();
+    } else if (matchesHotkeyCombo(e, hotkeyMarkIn())) {
+      e.preventDefault();
+      setInAtPlayhead();
+    } else if (matchesHotkeyCombo(e, hotkeyMarkOut())) {
+      e.preventDefault();
+      setOutAtPlayhead();
     } else if (e.code === 'ArrowLeft') {
       e.preventDefault();
       seekTo(Math.max(0, currentTime() - 2));
     } else if (e.code === 'ArrowRight') {
       e.preventDefault();
       seekTo(Math.min(safeDuration(), currentTime() + 2));
-    } else if (e.key === '[') {
-      e.preventDefault();
-      setInAtPlayhead();
-    } else if (e.key === ']') {
-      e.preventDefault();
-      setOutAtPlayhead();
     }
   };
 
   onMount(() => {
     refreshClips();
     checkGameStatus();
+
+    // Sync hotkeys from backend config if available
+    invoke<any>('get_config').then((cfg) => {
+      if (cfg) {
+        if (cfg.hotkey_mark_in) setHotkeyMarkIn(cfg.hotkey_mark_in);
+        if (cfg.hotkey_mark_out) setHotkeyMarkOut(cfg.hotkey_mark_out);
+        if (cfg.hotkey_play_pause) setHotkeyPlayPause(cfg.hotkey_play_pause);
+      }
+    }).catch(() => {});
+
+    const onHotkeysUpdated = (e: any) => {
+      const detail = e.detail;
+      if (detail) {
+        if (detail.hotkey_mark_in) setHotkeyMarkIn(detail.hotkey_mark_in);
+        if (detail.hotkey_mark_out) setHotkeyMarkOut(detail.hotkey_mark_out);
+        if (detail.hotkey_play_pause) setHotkeyPlayPause(detail.hotkey_play_pause);
+      }
+    };
+    window.addEventListener('eclipse:hotkeys-updated', onHotkeysUpdated);
+
     const interval = setInterval(() => {
       refreshClips();
     }, 8000);
@@ -774,6 +827,7 @@ export function TimelineReviewer(props?: { onOpenSettings?: () => void }) {
       clearInterval(interval);
       clearTimeout(initialSyncTimer);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('eclipse:hotkeys-updated', onHotkeysUpdated);
     });
   });
 
