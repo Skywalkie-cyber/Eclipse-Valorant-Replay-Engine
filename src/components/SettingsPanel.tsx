@@ -70,7 +70,8 @@ export function SettingsPanel() {
       }
     } catch (e: any) {
       console.warn('[Updater] Manual check notice:', e);
-      setUpdateCheckStatus('latest');
+      setUpdateCheckStatus('error');
+      setUpdateError(String(e));
     }
   };
 
@@ -1232,7 +1233,7 @@ export function SettingsPanel() {
                   <div className="p-3.5 rounded-lg bg-[#000000] border border-[#262626] flex flex-col justify-between">
                     <span className="text-[10px] font-mono uppercase text-slate-500 font-bold">Current Release</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm font-mono font-bold text-white">v0.1.1</span>
+                      <span className="text-sm font-mono font-bold text-white">v0.1.2</span>
                       <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold uppercase bg-[#10B981]/20 text-[#34D399] border border-[#10B981]/40">
                         Active
                       </span>
@@ -1259,6 +1260,11 @@ export function SettingsPanel() {
                       <Show when={updateCheckStatus() === 'available'}>
                         <span className="text-xs font-mono text-[#F59E0B] font-bold">
                           v{updatePayload()?.version} Available!
+                        </span>
+                      </Show>
+                      <Show when={updateCheckStatus() === 'error'}>
+                        <span className="text-xs font-mono text-[#EF4444] font-bold" title={updateError()}>
+                          Check Error
                         </span>
                       </Show>
                     </div>
