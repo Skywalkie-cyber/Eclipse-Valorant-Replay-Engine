@@ -321,6 +321,40 @@ export function SettingsPanel() {
     setTimeout(() => setSaveStatus(''), 2500);
   };
 
+  let autoSaveTimeout: any = null;
+  const updateConfigField = (updater: (prev: AppConfig) => AppConfig, immediate = true) => {
+    const cur = config();
+    if (!cur) return;
+    const updated = updater(cur);
+    setConfig(updated);
+
+    if (immediate) {
+      invoke('update_config', { newConfig: updated })
+        .then(() => {
+          setSaveStatus('Auto-saved & active!');
+          if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+          autoSaveTimeout = setTimeout(() => setSaveStatus(''), 2000);
+        })
+        .catch((err) => {
+          console.error('Failed to auto-save config:', err);
+          setSaveStatus(`Save Error: ${err}`);
+        });
+    } else {
+      if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(() => {
+        invoke('update_config', { newConfig: updated })
+          .then(() => {
+            setSaveStatus('Auto-saved & active!');
+            autoSaveTimeout = setTimeout(() => setSaveStatus(''), 2000);
+          })
+          .catch((err) => {
+            console.error('Failed to auto-save config:', err);
+            setSaveStatus(`Save Error: ${err}`);
+          });
+      }, 350);
+    }
+  };
+
   const saveSettings = async () => {
     const current = config();
     if (!current) return;
@@ -622,10 +656,10 @@ export function SettingsPanel() {
                     <input
                       type="checkbox"
                       checked={config()!.audio.capture_game_audio}
-                      onChange={(e) => setConfig({
-                        ...config()!,
-                        audio: { ...config()!.audio, capture_game_audio: e.currentTarget.checked }
-                      })}
+                      onChange={(e) => updateConfigField((prev) => ({
+                        ...prev,
+                        audio: { ...prev.audio, capture_game_audio: e.currentTarget.checked }
+                      }))}
                       className="accent-[#A3A3A3] size-4 rounded"
                     />
                     <div>
@@ -641,10 +675,10 @@ export function SettingsPanel() {
                   max="1"
                   step="0.05"
                   value={config()!.audio.game_audio_volume}
-                  onInput={(e) => setConfig({
-                    ...config()!,
-                    audio: { ...config()!.audio, game_audio_volume: Number(e.currentTarget.value) }
-                  })}
+                  onInput={(e) => updateConfigField((prev) => ({
+                    ...prev,
+                    audio: { ...prev.audio, game_audio_volume: Number(e.currentTarget.value) }
+                  }), false)}
                   className="w-full accent-[#A3A3A3] cursor-pointer"
                 />
               </div>
@@ -656,10 +690,10 @@ export function SettingsPanel() {
                     <input
                       type="checkbox"
                       checked={config()!.audio.capture_system_audio ?? true}
-                      onChange={(e) => setConfig({
-                        ...config()!,
-                        audio: { ...config()!.audio, capture_system_audio: e.currentTarget.checked }
-                      })}
+                      onChange={(e) => updateConfigField((prev) => ({
+                        ...prev,
+                        audio: { ...prev.audio, capture_system_audio: e.currentTarget.checked }
+                      }))}
                       className="accent-[#7C3AED] size-4 rounded"
                     />
                     <div>
@@ -678,10 +712,10 @@ export function SettingsPanel() {
                   max="1"
                   step="0.05"
                   value={config()!.audio.system_audio_volume ?? 1.0}
-                  onInput={(e) => setConfig({
-                    ...config()!,
-                    audio: { ...config()!.audio, system_audio_volume: Number(e.currentTarget.value) }
-                  })}
+                  onInput={(e) => updateConfigField((prev) => ({
+                    ...prev,
+                    audio: { ...prev.audio, system_audio_volume: Number(e.currentTarget.value) }
+                  }), false)}
                   className="w-full accent-[#7C3AED] cursor-pointer"
                 />
               </div>
@@ -693,10 +727,10 @@ export function SettingsPanel() {
                     <input
                       type="checkbox"
                       checked={config()!.audio.capture_microphone}
-                      onChange={(e) => setConfig({
-                        ...config()!,
-                        audio: { ...config()!.audio, capture_microphone: e.currentTarget.checked }
-                      })}
+                      onChange={(e) => updateConfigField((prev) => ({
+                        ...prev,
+                        audio: { ...prev.audio, capture_microphone: e.currentTarget.checked }
+                      }))}
                       className="accent-[#A3A3A3] size-4 rounded"
                     />
                     <div>
@@ -712,10 +746,10 @@ export function SettingsPanel() {
                   max="1"
                   step="0.05"
                   value={config()!.audio.mic_volume}
-                  onInput={(e) => setConfig({
-                    ...config()!,
-                    audio: { ...config()!.audio, mic_volume: Number(e.currentTarget.value) }
-                  })}
+                  onInput={(e) => updateConfigField((prev) => ({
+                    ...prev,
+                    audio: { ...prev.audio, mic_volume: Number(e.currentTarget.value) }
+                  }), false)}
                   className="w-full accent-[#A3A3A3] cursor-pointer"
                 />
               </div>
@@ -728,10 +762,10 @@ export function SettingsPanel() {
                     <input
                       type="checkbox"
                       checked={config()!.audio.separate_audio_tracks}
-                      onChange={(e) => setConfig({
-                        ...config()!,
-                        audio: { ...config()!.audio, separate_audio_tracks: e.currentTarget.checked }
-                      })}
+                      onChange={(e) => updateConfigField((prev) => ({
+                        ...prev,
+                        audio: { ...prev.audio, separate_audio_tracks: e.currentTarget.checked }
+                      }))}
                       className="accent-[#A3A3A3] size-4 rounded"
                     />
                     <div>
@@ -744,10 +778,10 @@ export function SettingsPanel() {
                     <input
                       type="checkbox"
                       checked={config()!.audio.push_to_talk}
-                      onChange={(e) => setConfig({
-                        ...config()!,
-                        audio: { ...config()!.audio, push_to_talk: e.currentTarget.checked }
-                      })}
+                      onChange={(e) => updateConfigField((prev) => ({
+                        ...prev,
+                        audio: { ...prev.audio, push_to_talk: e.currentTarget.checked }
+                      }))}
                       className="accent-[#A3A3A3] size-4 rounded"
                     />
                     <div>
@@ -763,9 +797,15 @@ export function SettingsPanel() {
 
             {/* SECTION 3: Smart Auto-Clipping Triggers */}
             <div id="settings-triggers" className="space-y-6">
-              <div>
-                <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Smart Auto-Clipping Triggers</h1>
-                <p className="text-xs text-slate-400 mt-1">Select which in-game combat moments automatically trigger highlight preservation without touching a key.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-base font-bold text-white tracking-wide uppercase font-mono">Smart Auto-Clipping Triggers</h1>
+                  <p className="text-xs text-slate-400 mt-1">Select which in-game combat moments automatically trigger highlight preservation without touching a key.</p>
+                </div>
+                <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold bg-[#10B981]/15 text-[#34D399] border border-[#10B981]/30 uppercase flex items-center gap-1.5 shrink-0">
+                  <span className="size-1.5 rounded-full bg-[#10B981] animate-pulse"></span>
+                  Instant Live Sync
+                </span>
               </div>
 
               <div className="bg-[#0A0A0A]/70 border border-[#262626] rounded-xl p-5 space-y-3 shadow-sm">
@@ -779,7 +819,7 @@ export function SettingsPanel() {
                   <input
                     type="checkbox"
                     checked={config()!.auto_clip_kills}
-                    onChange={(e) => setConfig({ ...config()!, auto_clip_kills: e.currentTarget.checked })}
+                    onChange={(e) => updateConfigField((prev) => ({ ...prev, auto_clip_kills: e.currentTarget.checked }))}
                     className="accent-[#A3A3A3] size-4 rounded"
                   />
                 </label>
@@ -792,7 +832,7 @@ export function SettingsPanel() {
                   <input
                     type="checkbox"
                     checked={config()!.auto_clip_headshots}
-                    onChange={(e) => setConfig({ ...config()!, auto_clip_headshots: e.currentTarget.checked })}
+                    onChange={(e) => updateConfigField((prev) => ({ ...prev, auto_clip_headshots: e.currentTarget.checked }))}
                     className="accent-[#A3A3A3] size-4 rounded"
                   />
                 </label>
@@ -805,7 +845,7 @@ export function SettingsPanel() {
                   <input
                     type="checkbox"
                     checked={config()!.auto_clip_multikills}
-                    onChange={(e) => setConfig({ ...config()!, auto_clip_multikills: e.currentTarget.checked })}
+                    onChange={(e) => updateConfigField((prev) => ({ ...prev, auto_clip_multikills: e.currentTarget.checked }))}
                     className="accent-[#A3A3A3] size-4 rounded"
                   />
                 </label>
@@ -818,7 +858,7 @@ export function SettingsPanel() {
                   <input
                     type="checkbox"
                     checked={config()!.auto_clip_deaths}
-                    onChange={(e) => setConfig({ ...config()!, auto_clip_deaths: e.currentTarget.checked })}
+                    onChange={(e) => updateConfigField((prev) => ({ ...prev, auto_clip_deaths: e.currentTarget.checked }))}
                     className="accent-[#A3A3A3] size-4 rounded"
                   />
                 </label>
@@ -831,7 +871,7 @@ export function SettingsPanel() {
                   <input
                     type="checkbox"
                     checked={config()!.auto_clip_spike_events}
-                    onChange={(e) => setConfig({ ...config()!, auto_clip_spike_events: e.currentTarget.checked })}
+                    onChange={(e) => updateConfigField((prev) => ({ ...prev, auto_clip_spike_events: e.currentTarget.checked }))}
                     className="accent-[#A3A3A3] size-4 rounded"
                   />
                 </label>
@@ -849,7 +889,7 @@ export function SettingsPanel() {
                   max="10"
                   step="1"
                   value={config()!.post_roll_seconds}
-                  onInput={(e) => setConfig({ ...config()!, post_roll_seconds: Number(e.currentTarget.value) })}
+                  onInput={(e) => updateConfigField((prev) => ({ ...prev, post_roll_seconds: Number(e.currentTarget.value) }), false)}
                   className="w-full accent-[#A3A3A3] cursor-pointer"
                 />
                 <p className="text-[11px] text-slate-500 leading-relaxed">Records this many seconds after the event occurs to capture the kill banner, celebration, and reaction.</p>
@@ -1225,7 +1265,7 @@ export function SettingsPanel() {
                   <div className="p-3.5 rounded-lg bg-[#000000] border border-[#262626] flex flex-col justify-between">
                     <span className="text-[10px] font-mono uppercase text-slate-500 font-bold">Current Release</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm font-mono font-bold text-white">v0.1.2</span>
+                      <span className="text-sm font-mono font-bold text-white">v0.1.3</span>
                       <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold uppercase bg-[#10B981]/20 text-[#34D399] border border-[#10B981]/40">
                         Active
                       </span>

@@ -40,6 +40,7 @@ pub struct ReplayRecorderManager {
     // Real-time HUD combat detector state (zero-allocation, runs on already-captured DXGI frames)
     hud_frame_counter: u64,
     hud_baseline_banner: f32,
+    prev_norm_kill_score: f32,
     hud_was_alive: bool,
     hud_alive_streak: u32,
     last_hud_kill_instant: Instant,
@@ -101,10 +102,11 @@ impl ReplayRecorderManager {
             completed_media_ms: 0,
             hud_frame_counter: 0,
             hud_baseline_banner: 18.0,
+            prev_norm_kill_score: 0.0,
             hud_was_alive: false,
             hud_alive_streak: 0,
             last_hud_kill_instant: now - Duration::from_secs(10),
-            last_hud_death_instant: now - Duration::from_secs(10),
+            last_hud_death_instant: now - Duration::from_secs(30),
             live_spree_count: 0,
             signal_tx: None,
             config_manager: None,
@@ -238,7 +240,25 @@ impl ReplayRecorderManager {
             return;
         }
 
-        // 1. Check if player HUD is active/alive (bottom-left health bar digits: x=0.27..0.34, y=0.91..0.96)
+        // Quick check against user configuration: short-circuit if all triggers are disabled
+        let (allow_kills, allow_hs, allow_multi, allow_deaths, allow_spikes) = if let Some(ref cm) = self.config_manager {
+            let cfg = cm.current.read().unwrap();
+            (
+                cfg.auto_clip_kills,
+                cfg.auto_clip_headshots,
+                cfg.auto_clip_multikills,
+                cfg.auto_clip_deaths,
+                cfg.auto_clip_spike_events,
+            )
+        } else {
+            (true, true, true, true, true)
+        };
+
+        if !allow_kills && !allow_hs && !allow_multi && !allow_deaths && !allow_spikes {
+            return;
+        }
+
+        // 1. Check if player HUD is active/alive (bottom-left health bar digits: x=0.275..0.335, y=0.915..0.955)
         let mut health_bright = 0u32;
         let mut health_samples = 0u32;
         let hx0 = (width as f32 * 0.275) as usize;
@@ -265,7 +285,7 @@ impl ReplayRecorderManager {
         }
 
         // 2. Sample bottom-center Kill Medallion core (x=0.482..0.518, y=0.798..0.852)
-        // AND outer dark medallion ring (x=0.455..0.475 & 0.525..0.545) so bright map walls never false-trigger!
+        // AND outer dark medallion ring (x=0.455..0.472 & 0.528..0.545) so bright map walls never false-trigger!
         let mut kill_accent_score = 0.0f32;
         let mut kill_samples = 0u32;
         let kx0 = (width as f32 * 0.482) as usize;
@@ -311,46 +331,29 @@ impl ReplayRecorderManager {
         }
         let avg_ring_luma = if ring_samples > 0 { ring_luma_sum / (ring_samples as f32) } else { 128.0 };
 
-        // Also sample teal progress bar below medallion (x=0.369..0.631, y=0.957..0.967)
-        let mut teal_samples = 0u32;
-        let mut teal_hits = 0u32;
-        let tx0 = (width as f32 * 0.369) as usize;
-        let tx1 = (width as f32 * 0.631) as usize;
-        let ty0 = (height as f32 * 0.957) as usize;
-        let ty1 = ((height as f32 * 0.967) as usize).max(ty0 + 2);
-        for y in (ty0..ty1).step_by(2) {
-            for x in (tx0..tx1).step_by(3) {
-                let idx = y * stride + x * 4;
-                if idx + 2 < bgra.len() {
-                    let b = bgra[idx] as i32;
-                    let g = bgra[idx + 1] as i32;
-                    let r = bgra[idx + 2] as i32;
-                    teal_samples += 1;
-                    if g > 140 && (g - r) > 35 && b > 90 && b < g + 25 {
-                        teal_hits += 1;
-                    }
-                }
-            }
-        }
-        let is_teal_kill_bar = teal_samples > 0 && (teal_hits * 100 / teal_samples) >= 25;
-
-        // Detect sharp upward spike in Kill Banner core surrounded by dark medallion background OR vibrant teal kill progress bar
+        // Derivative onset spike: Kill banner must have suddenly appeared from a lower baseline
+        let kill_jump = norm_kill_score - self.prev_norm_kill_score;
         let spike_ratio = norm_kill_score / self.hud_baseline_banner.max(6.0);
-        let is_kill_confirmed = (norm_kill_score > 19.5 && spike_ratio > 2.45 && avg_ring_luma < 92.0) || is_teal_kill_bar;
+        let is_kill_confirmed = norm_kill_score >= 22.0
+            && kill_jump >= 13.0
+            && spike_ratio >= 2.6
+            && avg_ring_luma < 90.0;
+
+        self.prev_norm_kill_score = norm_kill_score;
 
         if is_alive_hud
             && self.hud_alive_streak >= 5
             && is_kill_confirmed
-            && self.last_hud_kill_instant.elapsed() > Duration::from_millis(1600)
+            && self.last_hud_kill_instant.elapsed() > Duration::from_millis(1500)
         {
-            if self.last_hud_kill_instant.elapsed() > Duration::from_secs(12) {
+            if self.last_hud_kill_instant.elapsed() > Duration::from_secs(6) {
                 self.live_spree_count = 1;
             } else {
                 self.live_spree_count += 1;
             }
             self.last_hud_kill_instant = Instant::now();
             let k_num = self.live_spree_count;
-            let is_headshot = norm_kill_score > 26.0;
+            let is_headshot = norm_kill_score > 27.0;
             let label = match k_num {
                 1 => if is_headshot { "Headshot Kill (1K)" } else { "Kill (1K)" },
                 2 => "Double Kill (2K)",
@@ -376,37 +379,25 @@ impl ReplayRecorderManager {
 
             // Evaluate against User's Smart Auto-Clipping Trigger Configuration
             let is_multi = k_num > 1;
-            let should_clip = if let Some(ref cm) = self.config_manager {
-                let cfg = cm.current.read().unwrap();
-                let mut allow = false;
-                if cfg.auto_clip_kills {
-                    allow = true;
-                }
-                if is_headshot && cfg.auto_clip_headshots {
-                    allow = true;
-                }
-                if is_multi && cfg.auto_clip_multikills {
-                    allow = true;
-                }
-                allow
-            } else {
-                true
-            };
+            let should_clip = (allow_kills)
+                || (is_headshot && allow_hs)
+                || (is_multi && allow_multi);
 
             if should_clip {
                 if let Some(ref tx) = self.signal_tx {
                     let _ = tx.send(GameSignal::TriggerClip { reason: label.to_string() });
                 }
             }
-        } else {
-            self.hud_baseline_banner = self.hud_baseline_banner * 0.90 + norm_kill_score * 0.10;
+        } else if !is_kill_confirmed {
+            self.hud_baseline_banner = self.hud_baseline_banner * 0.92 + norm_kill_score * 0.08;
         }
 
-        // 3. Detect Death Transition: player was alive for at least ~1s, now health HUD vanished AND red edge vignette / death screen appears
-        if self.hud_was_alive
-            && self.hud_alive_streak >= 8
+        // 3. Detect Death Transition: player was alive for at least ~2s, now health HUD vanished AND death screen / combat report appears
+        if allow_deaths
+            && self.hud_was_alive
+            && self.hud_alive_streak >= 25
             && !is_alive_hud
-            && self.last_hud_death_instant.elapsed() > Duration::from_secs(5)
+            && self.last_hud_death_instant.elapsed() > Duration::from_secs(25)
         {
             let mut red_vignette = 0u32;
             let mut v_samples = 0u32;
@@ -420,13 +411,37 @@ impl ReplayRecorderManager {
                         let g = bgra[idx + 1] as i32;
                         let r = bgra[idx + 2] as i32;
                         v_samples += 1;
-                        if r > 130 && (r - g) > 40 && (r - b) > 40 {
+                        if r > 140 && (r - g) > 50 && (r - b) > 50 {
                             red_vignette += 1;
                         }
                     }
                 }
             }
-            if v_samples > 0 && (red_vignette * 100 / v_samples) >= 5 {
+
+            // Also check that center screen is NOT the Scoreboard (Tab) or Buy Menu (B)
+            let mut center_dark_samples = 0u32;
+            let cx0 = (width as f32 * 0.45) as usize;
+            let cx1 = (width as f32 * 0.55) as usize;
+            let cy0 = (height as f32 * 0.45) as usize;
+            let cy1 = (height as f32 * 0.55) as usize;
+            let mut center_samples = 0u32;
+            for y in (cy0..cy1).step_by(4) {
+                for x in (cx0..cx1).step_by(4) {
+                    let idx = y * stride + x * 4;
+                    if idx + 2 < bgra.len() {
+                        let b = bgra[idx] as u32;
+                        let g = bgra[idx + 1] as u32;
+                        let r = bgra[idx + 2] as u32;
+                        center_samples += 1;
+                        if r < 40 && g < 40 && b < 40 {
+                            center_dark_samples += 1;
+                        }
+                    }
+                }
+            }
+            let is_menu_open = center_samples > 0 && (center_dark_samples * 100 / center_samples) >= 70;
+
+            if !is_menu_open && v_samples > 0 && (red_vignette * 100 / v_samples) >= 12 {
                 self.last_hud_death_instant = Instant::now();
                 self.record_event(MatchEvent {
                     timestamp_pts: 0,
@@ -443,16 +458,8 @@ impl ReplayRecorderManager {
                     reason: Some("Eliminated".into()),
                 });
 
-                let should_clip_death = if let Some(ref cm) = self.config_manager {
-                    cm.current.read().unwrap().auto_clip_deaths
-                } else {
-                    true
-                };
-
-                if should_clip_death {
-                    if let Some(ref tx) = self.signal_tx {
-                        let _ = tx.send(GameSignal::TriggerClip { reason: "Death Replay".to_string() });
-                    }
+                if let Some(ref tx) = self.signal_tx {
+                    let _ = tx.send(GameSignal::TriggerClip { reason: "Death Replay".to_string() });
                 }
             }
         }

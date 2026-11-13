@@ -1,15 +1,15 @@
 {
-  "version": "0.1.2",
-  "notes": "Eclipse v0.1.2 Hotfix: Restored Vanguard-safe real-time Smart Auto-Clipping on all combat triggers, fixed the in-game transparent overlay notification popup on clip save, and unlocked full 4K UHD 60 FPS recording with H.264 Level 5.2 hardware acceleration.",
-  "pub_date": "2026-11-11T17:55:00Z",
+  "version": "0.1.3",
+  "notes": "Eclipse v0.1.3: Hotfix for Smart Auto-Clipping triggers. Fixed false-positive ability icon detections on Sage/Jett/Omen, eliminated random clip spam, added real-time settings auto-saving with live engine sync, hardened death detection against scoreboard and buy menus, and restricted log events to timeline bookmarks.",
+  "pub_date": "2026-11-13T12:45:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnYrSm1mUXFURmt1ZWdmR1FJZFowVDVzNUFqTGJBR2d0dlR3MFFNb1lwZTlTSHZvYkZFdGNkSXZaYThPWTcxYkQ5cFYvaUx4Y0twVXlHejJoNFJ1dXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NDIwMDIwCWZpbGU6RWNsaXBzZV8wLjEuMl94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjIKMDdzR2w4OFhRWDk2VDRieUorNzV2ZWs4QytGWU9RM05aTllpQjdLMjVnVFpHallTWTM5QTdmeG1FK0w4NHJuOUI0cytnaEVDSXFXblJ6bmpEa3RJQlE9PQo=",
-      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.2/Eclipse-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnY0aUE1S3pCNE1TNlpUalVBTThrNjJaQ0cvZ3lnVVNSaGVIRlcrN3dNUmRDQ0Z2U2luZDZtWVRhaHJzNGs3NGJwM0V5QWtwbENtdWZydWtucS9EZFFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NTczOTQ3CWZpbGU6RWNsaXBzZV8wLjEuM194NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjMKZEExcjI5WFhsay9Ickw2Q1JoYzN1Q0k3bnlOT3djL0xCdUFqZkpabzE0SFNGY2pQelRXWXI0UEJDQXJJZGV4cmY3K1UwaWJKNlA0ZzdCV3hRTlphRHc9PQo=",
+      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.3/Eclipse-Setup.exe"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnYrSm1mUXFURmt1ZWdmR1FJZFowVDVzNUFqTGJBR2d0dlR3MFFNb1lwZTlTSHZvYkZFdGNkSXZaYThPWTcxYkQ5cFYvaUx4Y0twVXlHejJoNFJ1dXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NDIwMDIwCWZpbGU6RWNsaXBzZV8wLjEuMl94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjIKMDdzR2w4OFhRWDk2VDRieUorNzV2ZWs4QytGWU9RM05aTllpQjdLMjVnVFpHallTWTM5QTdmeG1FK0w4NHJuOUI0cytnaEVDSXFXblJ6bmpEa3RJQlE9PQo=",
-      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.2/Eclipse-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbldrRXR4T3lCWnY0aUE1S3pCNE1TNlpUalVBTThrNjJaQ0cvZ3lnVVNSaGVIRlcrN3dNUmRDQ0Z2U2luZDZtWVRhaHJzNGs3NGJwM0V5QWtwbENtdWZydWtucS9EZFFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NTczOTQ3CWZpbGU6RWNsaXBzZV8wLjEuM194NjQtc2V0dXAuZXhlCXZlcnNpb246MC4xLjMKZEExcjI5WFhsay9Ickw2Q1JoYzN1Q0k3bnlOT3djL0xCdUFqZkpabzE0SFNGY2pQelRXWXI0UEJDQXJJZGV4cmY3K1UwaWJKNlA0ZzdCV3hRTlphRHc9PQo=",
+      "url": "https://github.com/Skywalkie-cyber/Eclipse-Zero-Latency-Valorant-Replay-Highlight-Engine/releases/download/v0.1.3/Eclipse-Setup.exe"
     }
   }
 }

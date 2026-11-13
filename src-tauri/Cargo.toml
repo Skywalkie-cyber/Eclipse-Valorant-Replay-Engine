@@ -1,6 +1,6 @@
 [package]
 name = "valorant-clipper"
-version = "0.1.2"
+version = "0.1.3"
 description = "Hyper-optimized, strictly local-only background clipping application for Valorant"
 edition = "2021"
 

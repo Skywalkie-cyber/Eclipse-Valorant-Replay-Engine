@@ -76,7 +76,6 @@ impl ShooterGameLogTailer {
             let mut current_round = 1;
             let mut round_kills = 0u32;
             let mut last_kill_instant = Instant::now();
-            let mut last_trigger_sent = Instant::now() - Duration::from_secs(30);
             let start_time = Instant::now();
 
             while is_running.load(Ordering::Relaxed) {
@@ -186,13 +185,6 @@ impl ShooterGameLogTailer {
                                 reason: Some(format!("Eliminated by {killer_agent}")),
                             };
                             let _ = signal_tx.send(GameSignal::Event(event));
-                            // Only trigger clip on death if local player was confirmed victim AND not debounced
-                            if is_self_victim && last_trigger_sent.elapsed() > Duration::from_secs(16) {
-                                last_trigger_sent = Instant::now();
-                                let _ = signal_tx.send(GameSignal::TriggerClip {
-                                    reason: format!("Eliminated by {killer_agent} ({weapon_detected})"),
-                                });
-                            }
                         }
                         else if is_kill_line {
                             // LOCAL PLAYER GOT AN ELIMINATION: Record as kill with the enemy victim agent & weapon!
@@ -227,14 +219,6 @@ impl ShooterGameLogTailer {
                                 reason: Some(multi_label.to_string()),
                             };
                             let _ = signal_tx.send(GameSignal::Event(event));
-
-                            // Debounce clip triggering: require at least 14s between auto-triggers, or multi-kill continuation
-                            if last_trigger_sent.elapsed() > Duration::from_secs(14) || round_kills > 1 {
-                                last_trigger_sent = Instant::now();
-                                let _ = signal_tx.send(GameSignal::TriggerClip {
-                                    reason: multi_label.to_string(),
-                                });
-                            }
                         }
                         // 3. Spike Planted
                         else if line.contains("BombPlanted") || line.contains("SpikePlanted") || line.contains("BombPlantedEvent") {
